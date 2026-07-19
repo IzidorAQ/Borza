@@ -1036,7 +1036,8 @@ const LS = (() => {
 })();
 function capsSave(){
   if(!LS) return;
-  try{ LS.setItem('bt_caps_v1', JSON.stringify({t:Date.now(), fx:FX, d:[...capEur]})); }catch(e){}
+  try{ LS.setItem('bt_caps_v1', JSON.stringify(
+    {t:Date.now(), fx:FX, d:[...capEur], n:[...capNoData]})); }catch(e){}
 }
 function capsLoad(){
   if(!LS) return 0;
@@ -1045,6 +1046,7 @@ function capsLoad(){
     if(!o || Date.now() - o.t > 7*864e5) return 0;
     Object.assign(FX, o.fx || {});
     (o.d || []).forEach(([k,v]) => capEur.set(k,v));
+    (o.n || []).forEach(k => capNoData.add(k));
     if(FX.USD) fxEurUsd = FX.USD;
     return capEur.size;
   }catch(e){ return 0; }
@@ -1052,6 +1054,7 @@ function capsLoad(){
 
 const FX = {EUR:1};                 // valuta -> koliko enot za 1 EUR
 const capEur = new Map();           // ime podjetja -> kapitalizacija v EUR
+const capNoData = new Set();        // ime podjetja -> vir nima podatka zanj (npr. tuja borza)
 let capState = 'pending';           // pending | ok | fail
 
 const FX_PAIRS = ['USD','GBP','CHF','JPY','SEK','DKK','NOK','CAD','AUD','HKD','CNY',
@@ -1156,10 +1159,16 @@ const CAP_SOURCES = [
 ];
 let capSource = null;
 
-async function pickCapSource(sample){
+/* Preverjanje vira uporablja fiksne, zanesljivo obstoječe ameriške simbole,
+   ne prve manjkajoče, ker so manjkajoči proti koncu pregleda pogosto tuje
+   borze, ki jih posamezen vir morda sploh ne podpira. To je vodilo prej
+   do napačnega sklepa, da noben vir ne deluje. */
+const PROBE_SYMS = ['AAPL','MSFT','AMZN'];
+
+async function pickCapSource(){
   for(const src of CAP_SOURCES){
     try{
-      const probe = src.batch > 1 ? sample.slice(0, src.batch) : [sample[0]];
+      const probe = src.batch > 1 ? PROBE_SYMS.concat(PROBE_SYMS).slice(0, Math.max(src.batch,3)) : ['AAPL'];
       const res = await src.run(probe);
       if(res.size){ capSource = src; return src; }
     }catch(e){ /* naslednji vir */ }
@@ -1173,16 +1182,25 @@ async function loadCaps(){
   capScanRunning = true;
   const bySym = new Map();
   COMPANIES.forEach(c => {
-    if(c.rankListing && !capEur.has(c.name)) bySym.set(c.rankListing.sym, c);
+    if(c.rankListing && !capEur.has(c.name) && !capNoData.has(c.name)) bySym.set(c.rankListing.sym, c);
   });
   const syms = [...bySym.keys()];
-  if(!syms.length){ capState = 'ok'; capScanRunning = false; render(); return; }
+  if(!syms.length){
+    capState = capEur.size ? 'ok' : (capNoData.size ? 'partial' : 'fail');
+    capScanRunning = false; render(); return;
+  }
   const sample = ['AAPL','MSFT','NESN.SW','7203.T'].filter(x => bySym.has(x)).concat(syms.slice(0,4));
 
   capState = 'pending';
   setStatus('iščem vir za kapitalizacije');
-  const src = await pickCapSource(sample);
-  if(!src){ capFailed(); return; }
+  const src = capSource || await pickCapSource();
+  if(!src){
+    /* noben vir sploh ne odgovarja: le tedaj gre za pravo napako */
+    if(!capEur.size) capFailed();
+    else { capState = 'ok'; render(); }
+    capScanRunning = false;
+    return;
+  }
 
   setStatus('kapitalizacije prek ' + src.name);
   const queue = [];
@@ -1194,10 +1212,13 @@ async function loadCaps(){
       const chunk = queue.shift();
       try{
         const res = await src.run(chunk);
-        res.forEach((val, sym) => {
+        chunk.forEach(sym => {
           const c = bySym.get(sym);
-          const eur = toEur(val.cap, val.cur);
-          if(c && eur){ capEur.set(c.name, eur); hits++; }
+          if(!c) return;
+          const val = res.get(sym);
+          const eur = val ? toEur(val.cap, val.cur) : null;
+          if(eur){ capEur.set(c.name, eur); hits++; }
+          else capNoData.add(c.name);   // vir nima podatka za to kotacijo, ne poskušamo znova ta teden
         });
       }catch(e){}
       done += chunk.length;
@@ -1211,11 +1232,22 @@ async function loadCaps(){
   });
   await Promise.all(workers);
   capScanRunning = false;
-  capState = capEur.size > 20 ? 'ok' : 'fail';
+  /* Vir je bil najden in je odgovarjal, torej ne gre za napako, tudi če
+     nekaterih tujih borz ta vmesnik preprosto ne pokriva. */
+  capState = capEur.size ? 'ok' : (capNoData.size ? 'partial' : 'fail');
   capsSave();
   if(capState === 'fail') capFailed();
   else{
-    setStatus(`kapitalizacije: ${capEur.size} od ${COMPANIES.length}`);
+    const n = document.getElementById('notice');
+    if(capNoData.size){
+      n.className = 'notice show';
+      n.textContent = `Kapitalizacija je prebrana za ${capEur.size} od ${COMPANIES.length} podjetij. `
+        + `Za ${capNoData.size} je vir ne ponuja, ker gre pretežno za tuje borze, ki jih ta vmesnik ne pokriva. `
+        + `Rang za ta podjetja manjka, tečaji pa so zanje še vedno pravilni.`;
+    }else{
+      n.className = 'notice';
+    }
+    setStatus(`kapitalizacije: ${capEur.size} od ${COMPANIES.length} prek ${capSource.id}`);
     render();
   }
 }
@@ -1406,7 +1438,7 @@ function health(){
     setStatus('posodobljeno ' + new Date().toLocaleTimeString('sl-SI')
       + (nextAt ? ' · naslednja ob ' + new Date(nextAt).toLocaleTimeString('sl-SI',
           {hour:'2-digit',minute:'2-digit'}) : ''));
-    n.className = 'notice';
+    if(!capNoData.size) n.className = 'notice';
   }
 }
 const dot = document.getElementById('dot');
@@ -1544,7 +1576,9 @@ function render(){
   document.getElementById('count').textContent =
     `${arr.length} podjetij v izboru · ${GROUPS.vse.length} v bazi · `
     + `${GROUPS.dvojne.length} z več kotacijami · kapitalizacija: `
-    + (capState === 'ok'   ? `${capEur.size} prebranih prek ${capSource ? capSource.id : '?'}`
+    + (capState === 'ok' || capState === 'partial'
+        ? `${capEur.size}/${COMPANIES.length} prek ${capSource ? capSource.id : '?'}`
+          + (capNoData.size ? ` (${capNoData.size} ni na voljo)` : '')
      : capState === 'fail' ? 'ni na voljo' : 'berem ...');
   document.getElementById('pageInfo').textContent =
     `${arr.length ? page*perPage+1 : 0}–${Math.min(arr.length,(page+1)*perPage)} od ${arr.length}`;
@@ -1585,12 +1619,13 @@ document.getElementById('proxy').onchange = e => {
   NET.max = own ? 6 : 3;
   if(ownEl) ownEl.value = '';
   if(LS){ try{ LS.removeItem('bt_proxy'); }catch(err){} }
-  cache.clear(); histCache.clear(); capState = 'pending';
+  cache.clear(); histCache.clear(); capState = 'pending'; capNoData.clear(); capSource = null;
   render(); buildTape();
   loadFx().then(loadCaps);
 };
 document.getElementById('refresh').onclick = async () => {
-  cache.clear(); histCache.clear(); netOk = 0; netFail = 0; capEur.clear(); capState = 'pending';
+  cache.clear(); histCache.clear(); netOk = 0; netFail = 0;
+  capEur.clear(); capNoData.clear(); capSource = null; capState = 'pending';
   render(); buildTape();
   if(!FX.USD) await loadFx();
   loadCaps();
@@ -1625,7 +1660,7 @@ function useOwnProxy(){
   /* lasten proxy nima urne kvote, zato smemo hitreje in z več nitmi */
   NET.rate429 = 0; NET.backoff = 0; NET.gap = 110; NET.max = 6;
   document.getElementById('slow').classList.remove('on');
-  cache.clear(); histCache.clear();
+  cache.clear(); histCache.clear(); capSource = null;
   setStatus('uporabljam lasten proxy');
   render(); buildTape();
   loadFx().then(loadCaps);
