@@ -165,17 +165,18 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
     <option value="ext">Razvrsti: izven redne seje</option>
   </select>
   <select id="proxy">
-    <option value="0">corsproxy.io</option>
-    <option value="1">allorigins</option>
-    <option value="2">codetabs</option>
-    <option value="3">cors.sh</option>
-    <option value="4">brez posrednika</option>
+    <option value="0">moj Cloudflare Worker</option>
+    <option value="1">corsproxy.io</option>
+    <option value="2">allorigins</option>
+    <option value="3">codetabs</option>
+    <option value="4">cors.sh</option>
+    <option value="5">brez posrednika</option>
   </select>
   <button class="btn" id="refresh">Osveži</button>
   <button class="btn" id="auto">Auto 60s</button>
   <button class="btn" id="slow">Počasen način</button>
   <button class="btn" id="diag">Diagnostika</button>
-  <input type="search" id="ownProxy" placeholder="Lasten proxy, npr. https://moj.workers.dev/?url=" style="min-width:210px">
+  <input type="search" id="ownProxy" placeholder="Lasten proxy" style="min-width:210px" title="Privzeto je vpisan tvoj Cloudflare Worker">
   <div class="status"><span class="dot" id="dot"></span><span id="statusText">pripravljen</span></div>
 </div>
 
@@ -206,7 +207,7 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
 </div>
 
 <footer>
-  Tečaji so informativni in niso podlaga za trgovalne odločitve. Podatki prihajajo iz javnega vmesnika Yahoo Finance prek brezplačnega posrednika. Če prenos ne uspe, ostane polje prazno in stran to izpiše. Nobena številka ni simulirana.
+  Tečaji so informativni in niso podlaga za trgovalne odločitve. Podatki prihajajo iz javnega vmesnika Yahoo Finance prek lastnega Cloudflare Workerja na naslovu borza.pazii2004.workers.dev. Če ta ne odgovarja, so v spustnem meniju na voljo javni posredniki. Če prenos ne uspe, ostane polje prazno in stran to izpiše. Nobena številka ni simulirana.
   <br><br>
   Kotacije istega podjetja se med borzami razlikujejo zaradi valute, razmerja pri potrdilih ADR, časovnega zamika in likvidnosti. Sekundarne kotacije v Frankfurtu in ameriška potrdila ADR so pogosto redko trgovana, zato je njihova cena lahko zastarela tudi med odprto borzo. Merodajna je domača borza podjetja.
   <br><br>
@@ -1015,7 +1016,9 @@ const GROUPS = {
 /* =====================================================================
    2. PRENOS
    ===================================================================== */
+const OWN_PROXY = 'https://borza.pazii2004.workers.dev/';
 const PROXIES = [
+  u => OWN_PROXY + '?url=' + encodeURIComponent(u),
   u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
   u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
   u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
@@ -1263,7 +1266,7 @@ function yUrl(sym, range, interval, prepost){
 }
 /* Posredniki imajo urne kvote. Zahtevke zato razmikamo in se ob
    odgovoru 429 samodejno umaknemo, namesto da bi kvoto do konca porabili. */
-const NET = {gap: 320, last: 0, active: 0, max: 3, backoff: 0, rate429: 0};
+const NET = {gap: 110, last: 0, active: 0, max: 6, backoff: 0, rate429: 0};
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function netFetch(url, tries = 3){
@@ -1573,6 +1576,9 @@ document.getElementById('next').onclick = () => { page++; render(); scrollTo(0,0
 document.getElementById('proxy').onchange = e => {
   proxyIdx = +e.target.value; netOk = 0; netFail = 0;
   NET.rate429 = 0; NET.backoff = 0;
+  const own = proxyIdx === 0;
+  NET.gap = own ? 110 : 320;
+  NET.max = own ? 6 : 3;
   if(ownEl) ownEl.value = '';
   if(LS){ try{ LS.removeItem('bt_proxy'); }catch(err){} }
   cache.clear(); histCache.clear(); capState = 'pending';
@@ -1594,18 +1600,31 @@ document.getElementById('slow').onclick = e => {
 };
 
 const ownEl = document.getElementById('ownProxy');
-if(LS && LS.getItem('bt_proxy')){ ownEl.value = LS.getItem('bt_proxy'); useOwnProxy(); }
+ownEl.value = OWN_PROXY;
+if(LS && LS.getItem('bt_proxy') && LS.getItem('bt_proxy') !== OWN_PROXY){
+  ownEl.value = LS.getItem('bt_proxy');
+  useOwnProxy();
+}
 ownEl.addEventListener('change', () => { useOwnProxy(); });
 function useOwnProxy(){
   const v = ownEl.value.trim();
   if(LS){ try{ v ? LS.setItem('bt_proxy', v) : LS.removeItem('bt_proxy'); }catch(e){} }
-  if(!v){ proxyIdx = +document.getElementById('proxy').value; return; }
+  if(!v || v === OWN_PROXY){
+    proxyIdx = 0; NET.gap = 110; NET.max = 6;
+    document.getElementById('proxy').value = '0';
+    ownEl.value = OWN_PROXY;
+    cache.clear(); histCache.clear(); render(); buildTape();
+    return;
+  }
   PROXIES[99] = u => v + (v.includes('?') ? '' : '?url=') + encodeURIComponent(u);
   proxyIdx = 99;
-  NET.rate429 = 0; NET.backoff = 0;
+  /* lasten proxy nima urne kvote, zato smemo hitreje in z več nitmi */
+  NET.rate429 = 0; NET.backoff = 0; NET.gap = 110; NET.max = 6;
+  document.getElementById('slow').classList.remove('on');
   cache.clear(); histCache.clear();
   setStatus('uporabljam lasten proxy');
   render(); buildTape();
+  loadFx().then(loadCaps);
 }
 
 document.getElementById('diag').onclick = () => {
