@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Borzni terminal | delnice, surovine, Ljubljana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d1117;
+  --panel:#151b25;
+  --panel-2:#1b2330;
+  --line:#26303f;
+  --text:#dfe6f0;
+  --dim:#8b98ab;
+  --up:#2ecc8f;
+  --down:#ff5c72;
+  --amber:#ffb547;
+  --cyan:#4fd6ff;
+  --radius:4px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:13px;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.display{font-family:'Archivo',system-ui,sans-serif;letter-spacing:-.02em}
+
+/* ---------- trak ---------- */
+.tape{
+  border-bottom:1px solid var(--line);
+  background:var(--panel);
+  overflow:hidden;
+  white-space:nowrap;
+  height:34px;
+  position:relative;
+}
+.tape-track{display:inline-block;padding-top:8px;animation:slide 90s linear infinite;will-change:transform}
+.tape:hover .tape-track{animation-play-state:paused}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tape-item{display:inline-block;padding:0 18px;font-size:12px;cursor:pointer}
+.tape-item b{color:var(--text);font-weight:600}
+@media (prefers-reduced-motion:reduce){.tape-track{animation:none}}
+
+/* ---------- glava ---------- */
+header{
+  display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;
+  padding:18px 20px 14px;border-bottom:1px solid var(--line);
+}
+header h1{margin:0;font-size:22px;font-weight:900;text-transform:uppercase}
+header h1 span{color:var(--amber)}
+.sub{color:var(--dim);font-size:11px;margin-left:auto;text-align:right;line-height:1.6}
+
+/* ---------- orodna vrstica ---------- */
+.toolbar{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel);
+}
+.tabs{display:flex;gap:2px;background:var(--ink);padding:3px;border-radius:var(--radius)}
+.tab{
+  background:none;border:0;color:var(--dim);font-family:inherit;font-size:12px;
+  padding:6px 12px;cursor:pointer;border-radius:3px;letter-spacing:.03em;
+}
+.tab[aria-selected="true"]{background:var(--amber);color:#111}
+input[type=search],select{
+  background:var(--ink);border:1px solid var(--line);color:var(--text);
+  font-family:inherit;font-size:12px;padding:7px 10px;border-radius:var(--radius);
+}
+input[type=search]{min-width:170px}
+.btn{
+  background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+  font-family:inherit;font-size:12px;padding:7px 12px;border-radius:var(--radius);cursor:pointer;
+}
+.btn:hover{border-color:var(--amber);color:var(--amber)}
+.btn.on{background:var(--amber);color:#111;border-color:var(--amber)}
+.status{color:var(--dim);font-size:11px;margin-left:auto}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);margin-right:6px}
+.dot.live{background:var(--up);box-shadow:0 0 8px var(--up)}
+.dot.demo{background:var(--amber)}
+
+.notice{
+  display:none;padding:10px 20px;background:#2a2113;border-bottom:1px solid #4a3a1a;
+  color:var(--amber);font-size:12px;
+}
+.notice.show{display:block}
+
+/* ---------- tabela ---------- */
+.wrap{padding:0 0 60px}
+table{width:100%;border-collapse:collapse}
+thead th{
+  position:sticky;top:0;background:var(--panel);z-index:5;
+  text-align:right;font-weight:500;color:var(--dim);font-size:11px;
+  padding:9px 14px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+thead th:first-child,thead th:nth-child(2){text-align:left}
+thead th.sorted{color:var(--amber)}
+tbody td{padding:9px 14px;border-bottom:1px solid #1c2430;text-align:right;white-space:nowrap}
+tbody td:first-child,tbody td:nth-child(2){text-align:left}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--panel-2)}
+.tk{font-weight:600;color:var(--cyan)}
+.nm{color:var(--dim);max-width:280px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
+.up{color:var(--up)}
+.down{color:var(--down)}
+.spark{width:70px;height:22px;vertical-align:middle}
+.pill{padding:2px 6px;border-radius:3px;font-size:12px}
+.pill.up{background:rgba(46,204,143,.12)}
+.pill.down{background:rgba(255,92,114,.12)}
+.pager{display:flex;gap:8px;align-items:center;justify-content:center;padding:16px}
+
+/* ---------- modal ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(5,8,12,.82);display:none;
+  align-items:center;justify-content:center;padding:16px;z-index:50;
+}
+.overlay.show{display:flex}
+.modal{
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  width:min(980px,100%);max-height:92vh;overflow:auto;
+}
+.modal-head{display:flex;align-items:flex-start;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.modal-head h2{margin:0;font-size:26px;font-weight:900}
+.modal-head .meta{color:var(--dim);font-size:11px;margin-top:4px}
+.price-big{margin-left:auto;text-align:right}
+.price-big .p{font-size:30px;font-family:'Archivo';font-weight:700}
+.close{background:none;border:1px solid var(--line);color:var(--dim);border-radius:3px;cursor:pointer;font-size:16px;width:30px;height:30px}
+.ranges{display:flex;gap:4px;flex-wrap:wrap;padding:14px 20px 0}
+.range{background:var(--ink);border:1px solid var(--line);color:var(--dim);font-family:inherit;font-size:11px;padding:5px 11px;border-radius:3px;cursor:pointer}
+.range[aria-pressed="true"]{background:var(--cyan);color:#08121a;border-color:var(--cyan)}
+.chart-box{position:relative;padding:12px 20px 0}
+canvas#chart{width:100%;height:320px;display:block}
+.crosshair{
+  position:absolute;pointer-events:none;background:var(--panel-2);border:1px solid var(--line);
+  padding:6px 9px;font-size:11px;border-radius:3px;display:none;white-space:nowrap;z-index:2;
+}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:var(--line);margin:18px 0 0}
+.stat{background:var(--panel);padding:11px 14px}
+.stat b{display:block;color:var(--dim);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.stat span{font-size:14px}
+footer{padding:20px;color:var(--dim);font-size:11px;line-height:1.7;border-top:1px solid var(--line)}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media(max-width:700px){
+  .hide-s{display:none}
+  header h1{font-size:18px}
+  .modal-head h2{font-size:20px}
+}
+</style>
+</head>
+<body>
+
+<div class="tape" aria-hidden="true"><div class="tape-track" id="tape"></div></div>
+
+<header>
+  <h1>Borzni <span>terminal</span></h1>
+  <div class="sub">
+    Podatki: Yahoo Finance prek javnega CORS posrednika<br>
+    Zamik do 15 minut, odvisno od borze
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-list="global" aria-selected="true">Global 500</button>
+    <button class="tab" role="tab" data-list="surovine" aria-selected="false">Surovine</button>
+    <button class="tab" role="tab" data-list="slo" aria-selected="false">Ljubljana</button>
+    <button class="tab" role="tab" data-list="indeksi" aria-selected="false">Indeksi in valute</button>
+  </div>
+  <input type="search" id="q" placeholder="Iskanje po simbolu ali imenu">
+  <select id="proxy" title="Vir podatkov">
+    <option value="0">Posrednik: corsproxy.io</option>
+    <option value="1">Posrednik: allorigins</option>
+    <option value="2">Brez posrednika (direktno)</option>
+  </select>
+  <button class="btn" id="refresh">Osveži</button>
+  <button class="btn" id="auto">Samodejno 60s</button>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">pripravljen</span></div>
+</div>
+
+<div class="notice" id="notice"></div>
+
+<div class="wrap">
+  <table>
+    <thead>
+      <tr>
+        <th data-sort="symbol">Simbol</th>
+        <th data-sort="name">Ime</th>
+        <th class="hide-s">Trend</th>
+        <th data-sort="price">Tečaj</th>
+        <th data-sort="chg">Sprem.</th>
+        <th data-sort="pct" class="sorted">Sprem. %</th>
+        <th data-sort="cap" class="hide-s">Kap. / valuta</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="pager">
+    <button class="btn" id="prev">&larr;</button>
+    <span id="pageInfo" style="color:var(--dim)"></span>
+    <button class="btn" id="next">&rarr;</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="mTitle">-</h2>
+        <div class="meta" id="mMeta">-</div>
+      </div>
+      <div class="price-big">
+        <div class="p" id="mPrice">-</div>
+        <div id="mChg">-</div>
+      </div>
+      <button class="close" id="mClose" aria-label="Zapri">&times;</button>
+    </div>
+    <div class="ranges" id="ranges"></div>
+    <div class="chart-box">
+      <canvas id="chart"></canvas>
+      <div class="crosshair" id="cross"></div>
+    </div>
+    <div class="stats" id="mStats"></div>
+  </div>
+</div>
+
+<footer>
+  Tečaji so informativne narave in niso primerni za trgovalne odločitve. Stran kliče javni Yahoo Finance vmesnik prek brezplačnega posrednika, ki lahko občasno omeji število zahtev. Če posrednik ne odgovori, stran preklopi v predstavitveni način s simuliranimi vrednostmi in to jasno označi.
+</footer>
+
+<script>
+/* =======================================================================
+   1. SEZNAMI VREDNOSTNIH PAPIRJEV
+   ======================================================================= */
+
+const GLOBAL = `AAPL MSFT NVDA GOOGL GOOG AMZN META AVGO TSLA BRK-B LLY JPM V UNH XOM MA COST HD PG JNJ ABBV NFLX BAC CRM CVX MRK KO AMD PEP WMT TMO LIN ADBE CSCO ACN MCD ABT ORCL WFC DIS GE QCOM CAT DHR VZ TXN AMGN INTU IBM PFE NOW CMCSA PM SPGI UNP AXP ISRG COP MS AMAT RTX NEU GS T LOW NKE UBER PGR BKNG HON ELV BLK LRCX SYK VRTX TJX ETN BSX C MDT ADP MU ADI PLD SCHW REGN CB MMC KLAC CI BMY DE SBUX FI LMT SO AMT PANW ANET ZTS CVS MO GILD BDX ICE DUK CME EQIX APH ITW SHW SNPS MCO WM CDNS AON MSI TGT CL NOC CSX PYPL FCX EOG MPC HCA ORLY PSX GD MCK CMG TDG MMM PNC EMR ROP APD USB AJG MAR SLB PH NSC ADSK NXPI OXY VLO AZO SRE PCAR AEP TFC MET CARR TT AIG PSA F GM DXCM MSCI TEL AFL CPRT ALL O ROST DHI D WELL CCI JCI KMB SPG NEM HLT TRV PAYX IQV AME COF STZ EW A WMB HES LEN IDXX YUM CTAS BK KMI DOW OTIS EXC KHC GIS SYY PRU FIS ED CTSH VRSK GEHC ACGL NUE FTNT MNST DD KDP HUM ODFL CSGP PPG EA XEL RSG VICI BIIB ANSS ON MLM CDW LHX GWW WEC MTD FAST DVN IR CHTR ALGN TSCO GLW HSY EFX ZBH APTV PCG WST TROW WBD ROK EIX AWK PPL ES SBAC BR DLTR STE DFS CBRE TSN CAH VMC WY BALL HPQ FITB NTRS RJF CMS HBAN CNP AEE ATO DTE FE LNT NI EVRG PNW AES CEG VST NRG SW IP PKG AMCR AVY CE EMN LYB MOS CF ALB FMC IFF SEE STLD RS X CLF AA MP DAL UAL LUV ALK EXPE ABNB RCL CCL NCLH MGM WYNN LVS DRI DPZ QSR YUMC KR SYF DFS ALLY AXS AIZ BRO CINF GL HIG L LNC MKTV PFG RE UNM WRB WTW ZION CFG KEY MTB RF SNV WAL PB CMA FHN EWBC PNFP WBS BOKF ONB UMBF FNB ASB VLY SSB HWC UBSI GBCI CBSH TCBI FFIN INDB PPBI CATY BANR WSFS EGBN FIBK TOWN NWBI ADTN NTAP STX WDC HPE JNPR AKAM FFIV ZBRA TDY KEYS TRMB GRMN GPN JKHY FISV MA WU EEFT NCR VRSN GDDY SQ COIN HOOD SOFI AFRM UPST LC TREE ENVA OPRT NAVI SLM NNI DFIN MORN FDS TRU EFX SPGI MCO ICE NDAQ CBOE MKTX VIRT IBKR LPLA SF EVR MC PJT HLI LAZ PIPR RILY BGC COWN GHL AMTD NMR MFG SMFG MUFG HSBC BCS DB UBS CS SAN BBVA ING LYG RY TD BNS BMO CM NTRS STT BEN TROW IVZ AMG APO ARES KKR BX CG OWL TPG HLNE STEP PX ABDN JHG WDR VCTR VRTS CNS GROW SEIC ENV BR VIRT AMP RJF SCHW HOOD ETFC AMTD MKTX CBOE NDAQ SPOT SHOP MELI SE BABA PDD JD BIDU NTES TCOM LI NIO XPEV BEKE TME BILI IQ VIPS YMM ZTO ATHM WB SOHU DADA HTHT EDU TAL LEGN BGNE ZLAB HCM RLX YUMC NVO ASML TSM SAP TM SONY HMC MFG SHEL BP TTE E EQNR ENB TRP CNQ SU IMO CVE PBR VALE RIO BHP GLNCY AAL FCX SCCO TECK NGLOY AEM GOLD KGC WPM FNV RGLD AGI EGO IAG BTG HL CDE PAAS SSRM SVM EXK FSM MAG UEC CCJ DNN NXE UUUU LEU SMR OKLO BWXT ETN ABBNY SIEGY PHG NVS AZN GSK SNY RHHBY BAYRY MRNA BNTX PFE ILMN RVTY WAT BRKR TMO DHR MTD ICLR CRL LH DGX UHS THC CYH HCA EHC ACHC SEM AMED CHE ENSG PNTG NHC BKD OHI VTR WELL PEAK DOC SBRA CTRE LTC UHT MPW GMRE DHC AIV AIRC CPT MAA UDR ESS EQR AVB INVH AMH SUI ELS NNN ADC FCPT EPRT STOR SRC PINE GTY GOOD LXP STAG TRNO FR EGP PLD DRE ARE BXP VNO SLG HIW PGRE CUZ KRC DEI JBGS WPC BNL SRC EPR VICI GLPI MGP RHP PK HST APLE DRH INN SHO PEB XHR AHT BHR CLDT`.trim().split(/\s+/);
+
+const SUROVINE = [
+  ['GC=F','Zlato'],['SI=F','Srebro'],['PL=F','Platina'],['PA=F','Paladij'],
+  ['HG=F','Baker'],['ALI=F','Aluminij'],
+  ['CL=F','Nafta WTI'],['BZ=F','Nafta Brent'],['NG=F','Zemeljski plin'],
+  ['RB=F','Bencin'],['HO=F','Kurilno olje'],
+  ['ZW=F','Pšenica'],['ZC=F','Koruza'],['ZS=F','Soja'],['ZO=F','Oves'],['ZR=F','Riž'],
+  ['KC=F','Kava'],['CC=F','Kakav'],['SB=F','Sladkor'],['CT=F','Bombaž'],['OJ=F','Pomarančni sok'],
+  ['LE=F','Govedo'],['HE=F','Prašiči'],['LBS=F','Les'],
+  ['BTC-USD','Bitcoin'],['ETH-USD','Ethereum']
+];
+
+/* Ljubljanska borza. Yahoo pokritost je nepopolna, zato so vrstice
+   brez odziva označene kot "ni podatka". */
+const SLO = [
+  ['KRKG.LJ','Krka'],['NLBR.LJ','NLB'],['POSR.LJ','Pozavarovalnica Sava'],
+  ['ZVTG.LJ','Zavarovalnica Triglav'],['TLSG.LJ','Telekom Slovenije'],
+  ['PETG.LJ','Petrol'],['CICG.LJ','Cinkarna Celje'],['GRVG.LJ','Gorenjska banka'],
+  ['LKPG.LJ','Luka Koper'],['UKIG.LJ','Unior'],['SALR.LJ','Salus'],
+  ['DPRG.LJ','Dnevnik'],['MELR.LJ','Melamin'],['KDHR.LJ','KD Group'],
+  ['PBSR.LJ','Prva Group'],['IEKG.LJ','Intereuropa'],['ILBB.LJ','Iskra'],
+  ['MR1R.LJ','Modra zavarovalnica'],['SIVR.LJ','Sivent'],['ZTOG.LJ','Zito']
+];
+
+const INDEKSI = [
+  ['^GSPC','S&P 500'],['^DJI','Dow Jones'],['^IXIC','Nasdaq Composite'],
+  ['^NDX','Nasdaq 100'],['^RUT','Russell 2000'],['^VIX','VIX indeks strahu'],
+  ['^STOXX50E','Euro Stoxx 50'],['^GDAXI','DAX'],['^FCHI','CAC 40'],
+  ['^FTSE','FTSE 100'],['^IBEX','IBEX 35'],['FTSEMIB.MI','FTSE MIB'],
+  ['^ATX','ATX Dunaj'],['^N225','Nikkei 225'],['^HSI','Hang Seng'],
+  ['000001.SS','Shanghai Composite'],['^BSESN','Sensex'],['^BVSP','Bovespa'],
+  ['EURUSD=X','EUR / USD'],['EURCHF=X','EUR / CHF'],['EURGBP=X','EUR / GBP'],
+  ['EURJPY=X','EUR / JPY'],['DX-Y.NYB','Indeks dolarja'],
+  ['^TNX','ZDA obveznice 10 let'],['^IRX','ZDA zakladne menice 13 tednov']
+];
+
+const NAMES = {};
+[...SUROVINE,...SLO,...INDEKSI].forEach(([s,n])=>NAMES[s]=n);
+
+const LISTS = {
+  global: [...new Set(GLOBAL)],
+  surovine: SUROVINE.map(x=>x[0]),
+  slo: SLO.map(x=>x[0]),
+  indeksi: INDEKSI.map(x=>x[0])
+};
+
+/* =======================================================================
+   2. PRIDOBIVANJE PODATKOV
+   ======================================================================= */
+
+const PROXIES = [
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => u
+];
+let proxyIdx = 0;
+let demoMode = false;
+const cache = new Map();      // simbol -> podatki o tečaju
+const histCache = new Map();  // simbol|obdobje -> serija
+
+function yUrl(sym, range, interval){
+  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}`;
+}
+
+async function getChart(sym, range='1d', interval='5m'){
+  const url = PROXIES[proxyIdx](yUrl(sym, range, interval));
+  const r = await fetch(url, {cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  const res = j?.chart?.result?.[0];
+  if(!res) throw new Error('brez rezultata');
+  return res;
+}
+
+function parseQuote(sym, res){
+  const m = res.meta || {};
+  const closes = (res.indicators?.quote?.[0]?.close || []).filter(v=>v!=null);
+  const price = m.regularMarketPrice ?? closes[closes.length-1];
+  const prev  = m.chartPreviousClose ?? m.previousClose ?? closes[0];
+  return {
+    symbol: sym,
+    name: NAMES[sym] || m.longName || m.shortName || sym,
+    price, prev,
+    chg: price - prev,
+    pct: prev ? (price - prev) / prev * 100 : 0,
+    cur: m.currency || '',
+    exch: m.exchangeName || m.fullExchangeName || '',
+    high: m.regularMarketDayHigh, low: m.regularMarketDayLow,
+    vol: m.regularMarketVolume,
+    wk52h: m.fiftyTwoWeekHigh, wk52l: m.fiftyTwoWeekLow,
+    tz: m.exchangeTimezoneName || '',
+    spark: closes.slice(-40),
+    ts: Date.now()
+  };
+}
+
+/* Simulirane vrednosti, kadar omrežje ni dosegljivo. */
+function demoQuote(sym){
+  let h = 0; for(const c of sym) h = (h*31 + c.charCodeAt(0)) & 0xffffff;
+  const base = 8 + (h % 4000) / 10;
+  const pct = ((h % 733) / 733 - .5) * 5;
+  const price = base * (1 + pct/100);
+  const spark = Array.from({length:40}, (_,i) =>
+    base * (1 + Math.sin(i/5 + h%7)*0.012 + (i/40)*(pct/100)));
+  return {symbol:sym, name:NAMES[sym]||sym, price, prev:base, chg:price-base, pct,
+          cur:'USD', exch:'demo', spark, demo:true, ts:Date.now()};
+}
+
+async function loadQuotes(symbols, onEach){
+  const queue = symbols.filter(s => !cache.has(s) || Date.now()-cache.get(s).ts > 55000);
+  if(!queue.length){ symbols.forEach(s=>onEach(s)); return; }
+  let failures = 0, done = 0;
+  const workers = Array.from({length:6}, async () => {
+    while(queue.length){
+      const s = queue.shift();
+      try{
+        const res = await getChart(s);
+        cache.set(s, parseQuote(s, res));
+      }catch(e){
+        failures++;
+        if(failures > 4 && !demoMode) enterDemo();
+        cache.set(s, demoMode ? demoQuote(s) : {symbol:s, name:NAMES[s]||s, error:true, ts:Date.now()});
+      }
+      done++; onEach(s); setStatus(`nalagam ${done}/${done+queue.length}`);
+    }
+  });
+  await Promise.all(workers);
+  if(!demoMode){ setStatus('posodobljeno ' + new Date().toLocaleTimeString('sl-SI')); dot.className='dot live'; }
+}
+
+function enterDemo(){
+  demoMode = true;
+  dot.className = 'dot demo';
+  setStatus('predstavitveni način');
+  const n = document.getElementById('notice');
+  n.className = 'notice show';
+  n.textContent = 'Živih podatkov ni bilo mogoče prenesti. Prikazane so simulirane vrednosti. V spustnem meniju izberi drug posrednik in pritisni Osveži. Če stran odpiraš lokalno z dvoklikom, posredniki običajno delujejo, blokira pa jih lahko požarni zid ali blokator oglasov.';
+}
+
+const dot = document.getElementById('dot');
+function setStatus(t){ document.getElementById('statusText').textContent = t; }
+
+/* =======================================================================
+   3. TABELA
+   ======================================================================= */
+
+let current = 'global', page = 0, perPage = 50;
+let sortKey = 'pct', sortDir = -1;
+const rowsEl = document.getElementById('rows');
+const qEl = document.getElementById('q');
+
+function visibleSymbols(){
+  const q = qEl.value.trim().toLowerCase();
+  let syms = LISTS[current];
+  if(q) syms = syms.filter(s =>
+    s.toLowerCase().includes(q) || (NAMES[s]||cache.get(s)?.name||'').toLowerCase().includes(q));
+  if(sortKey !== 'symbol'){
+    syms = [...syms].sort((a,b) => {
+      const A = cache.get(a), B = cache.get(b);
+      if(!A && !B) return 0;
+      if(!A) return 1;
+      if(!B) return -1;
+      const va = A[sortKey], vb = B[sortKey];
+      if(typeof va === 'string') return va.localeCompare(vb) * sortDir;
+      return ((vb ?? -1e18) - (va ?? -1e18)) * sortDir * -1 * -1;
+    });
+  }else{
+    syms = [...syms].sort((a,b) => a.localeCompare(b) * sortDir);
+  }
+  return syms;
+}
+
+function fmt(v, d=2){
+  if(v == null || isNaN(v)) return '-';
+  return v.toLocaleString('sl-SI', {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+
+function sparkSVG(vals, up){
+  if(!vals || vals.length < 2) return '';
+  const min = Math.min(...vals), max = Math.max(...vals), r = (max-min)||1;
+  const pts = vals.map((v,i) => `${i/(vals.length-1)*70},${22 - (v-min)/r*20 - 1}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 70 22" preserveAspectRatio="none"><polyline points="${pts}"
+     fill="none" stroke="${up?'#2ecc8f':'#ff5c72'}" stroke-width="1.2"/></svg>`;
+}
+
+function render(){
+  const syms = visibleSymbols();
+  const pages = Math.max(1, Math.ceil(syms.length/perPage));
+  if(page >= pages) page = pages-1;
+  const slice = syms.slice(page*perPage, page*perPage+perPage);
+  rowsEl.innerHTML = slice.map(s => {
+    const d = cache.get(s);
+    if(!d) return `<tr data-s="${s}"><td class="tk">${s}</td><td class="nm">${NAMES[s]||''}</td>
+      <td class="hide-s"></td><td colspan="4" style="color:var(--dim)">nalagam</td></tr>`;
+    if(d.error) return `<tr data-s="${s}"><td class="tk">${s}</td><td class="nm">${d.name}</td>
+      <td class="hide-s"></td><td colspan="4" style="color:var(--dim)">ni podatka</td></tr>`;
+    const up = d.pct >= 0, cls = up ? 'up' : 'down';
+    return `<tr data-s="${s}">
+      <td class="tk">${s}</td>
+      <td><span class="nm">${d.name}</span></td>
+      <td class="hide-s">${sparkSVG(d.spark, up)}</td>
+      <td>${fmt(d.price, d.price<10?4:2)}</td>
+      <td class="${cls}">${up?'+':''}${fmt(d.chg, Math.abs(d.chg)<1?4:2)}</td>
+      <td><span class="pill ${cls}">${up?'+':''}${fmt(d.pct)} %</span></td>
+      <td class="hide-s" style="color:var(--dim)">${d.cur||''} ${d.exch?'· '+d.exch:''}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('pageInfo').textContent =
+    `${syms.length ? page*perPage+1 : 0}–${Math.min(syms.length,(page+1)*perPage)} od ${syms.length}`;
+  loadQuotes(slice, () => queueRender());
+}
+
+let rafPending = false;
+function queueRender(){
+  if(rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => { rafPending = false; paintOnly(); });
+}
+function paintOnly(){
+  [...rowsEl.children].forEach(tr => {
+    const s = tr.dataset.s, d = cache.get(s);
+    if(!d || tr.dataset.done === String(d.ts)) return;
+    tr.dataset.done = d.ts;
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = rowHTML(s, d);
+    tr.replaceWith(tmp.firstElementChild);
+  });
+}
+function rowHTML(s, d){
+  if(d.error) return `<tr data-s="${s}" data-done="${d.ts}"><td class="tk">${s}</td>
+    <td class="nm">${d.name}</td><td class="hide-s"></td>
+    <td colspan="4" style="color:var(--dim)">ni podatka</td></tr>`;
+  const up = d.pct >= 0, cls = up ? 'up' : 'down';
+  return `<tr data-s="${s}" data-done="${d.ts}">
+    <td class="tk">${s}</td><td><span class="nm">${d.name}</span></td>
+    <td class="hide-s">${sparkSVG(d.spark, up)}</td>
+    <td>${fmt(d.price, d.price<10?4:2)}</td>
+    <td class="${cls}">${up?'+':''}${fmt(d.chg, Math.abs(d.chg)<1?4:2)}</td>
+    <td><span class="pill ${cls}">${up?'+':''}${fmt(d.pct)} %</span></td>
+    <td class="hide-s" style="color:var(--dim)">${d.cur||''} ${d.exch?'· '+d.exch:''}</td></tr>`;
+}
+
+/* upravljanje */
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected','false'));
+  t.setAttribute('aria-selected','true');
+  current = t.dataset.list; page = 0; render();
+}));
+document.querySelectorAll('thead th[data-sort]').forEach(th => th.addEventListener('click', () => {
+  const k = th.dataset.sort;
+  if(k === sortKey) sortDir *= -1; else { sortKey = k; sortDir = -1; }
+  document.querySelectorAll('thead th').forEach(x => x.classList.remove('sorted'));
+  th.classList.add('sorted'); render();
+}));
+qEl.addEventListener('input', () => { page = 0; render(); });
+document.getElementById('prev').onclick = () => { if(page>0){ page--; render(); } };
+document.getElementById('next').onclick = () => { page++; render(); };
+document.getElementById('proxy').onchange = e => {
+  proxyIdx = +e.target.value; demoMode = false;
+  document.getElementById('notice').className = 'notice';
+  cache.clear(); histCache.clear(); render(); buildTape();
+};
+document.getElementById('refresh').onclick = () => { cache.clear(); render(); buildTape(); };
+let timer = null;
+document.getElementById('auto').onclick = e => {
+  if(timer){ clearInterval(timer); timer = null; e.target.classList.remove('on'); }
+  else { timer = setInterval(() => { cache.clear(); render(); }, 60000); e.target.classList.add('on'); }
+};
+
+/* =======================================================================
+   4. PODROBNOSTI IN GRAF
+   ======================================================================= */
+
+const RANGES = [
+  ['1D','1d','5m'], ['5D','5d','15m'], ['1M','1mo','1d'], ['3M','3mo','1d'],
+  ['6M','6mo','1d'], ['YTD','ytd','1d'], ['1L','1y','1d'], ['5L','5y','1wk'], ['MAX','max','1mo']
+];
+let openSym = null, activeRange = 2, series = null;
+const overlay = document.getElementById('overlay');
+const canvas = document.getElementById('chart');
+const cross = document.getElementById('cross');
+
+document.getElementById('ranges').innerHTML = RANGES.map((r,i) =>
+  `<button class="range" data-i="${i}" aria-pressed="${i===2}">${r[0]}</button>`).join('');
+document.getElementById('ranges').addEventListener('click', e => {
+  const b = e.target.closest('.range'); if(!b) return;
+  activeRange = +b.dataset.i;
+  document.querySelectorAll('.range').forEach(x => x.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true');
+  loadSeries();
+});
+
+rowsEl.addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-s]'); if(!tr) return;
+  openDetail(tr.dataset.s);
+});
+
+function openDetail(sym){
+  openSym = sym;
+  overlay.classList.add('show');
+  const d = cache.get(sym) || {};
+  document.getElementById('mTitle').textContent = d.name || NAMES[sym] || sym;
+  document.getElementById('mMeta').textContent =
+    `${sym}${d.exch ? ' · ' + d.exch : ''}${d.cur ? ' · ' + d.cur : ''}${d.tz ? ' · ' + d.tz : ''}`;
+  document.getElementById('mPrice').textContent = fmt(d.price, d.price<10?4:2);
+  const up = (d.pct ?? 0) >= 0;
+  document.getElementById('mChg').innerHTML =
+    `<span class="${up?'up':'down'}">${up?'+':''}${fmt(d.chg)} (${up?'+':''}${fmt(d.pct)} %)</span>`;
+  renderStats(d);
+  loadSeries();
+}
+function closeDetail(){ overlay.classList.remove('show'); openSym = null; }
+document.getElementById('mClose').onclick = closeDetail;
+overlay.addEventListener('click', e => { if(e.target === overlay) closeDetail(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeDetail(); });
+
+function renderStats(d){
+  const rows = [
+    ['Dnevni razpon', d.low!=null ? `${fmt(d.low)} – ${fmt(d.high)}` : '-'],
+    ['Zadnje zaprtje', fmt(d.prev)],
+    ['52 tednov', d.wk52l!=null ? `${fmt(d.wk52l)} – ${fmt(d.wk52h)}` : '-'],
+    ['Promet', d.vol!=null ? d.vol.toLocaleString('sl-SI') : '-'],
+    ['Valuta', d.cur || '-'],
+    ['Borza', d.exch || '-']
+  ];
+  document.getElementById('mStats').innerHTML = rows.map(([k,v]) =>
+    `<div class="stat"><b>${k}</b><span>${v}</span></div>`).join('');
+}
+
+async function loadSeries(){
+  const [,range,interval] = RANGES[activeRange];
+  const key = openSym + '|' + range;
+  series = null; drawChart('Nalagam zgodovino');
+  if(histCache.has(key)){ series = histCache.get(key); drawChart(); return; }
+  try{
+    const res = await getChart(openSym, range, interval);
+    const ts = res.timestamp || [];
+    const cl = res.indicators?.quote?.[0]?.close || [];
+    const pts = [];
+    for(let i=0;i<ts.length;i++) if(cl[i]!=null) pts.push({t:ts[i]*1000, v:cl[i]});
+    if(!pts.length) throw new Error('prazno');
+    series = pts; histCache.set(key, pts); drawChart();
+  }catch(err){
+    if(demoMode){
+      const d = cache.get(openSym) || demoQuote(openSym);
+      const n = 120, out = [];
+      let v = d.price * 0.85;
+      for(let i=0;i<n;i++){ v *= 1 + (Math.sin(i/7)*0.01 + (Math.random()-.48)*0.012); 
+        out.push({t: Date.now() - (n-i)*86400000, v}); }
+      series = out; drawChart();
+    }else{
+      drawChart('Za to obdobje ni podatkov');
+    }
+  }
+}
+
+function drawChart(msg){
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = 320;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,h);
+  if(msg || !series){
+    c.fillStyle = '#8b98ab'; c.font = '13px "IBM Plex Mono", monospace';
+    c.textAlign = 'center'; c.fillText(msg || 'Ni podatkov', w/2, h/2);
+    return;
+  }
+  const pad = {l:56, r:10, t:14, b:26};
+  const vals = series.map(p=>p.v);
+  let min = Math.min(...vals), max = Math.max(...vals);
+  const span = (max-min) || max*0.02 || 1;
+  min -= span*0.08; max += span*0.08;
+  const X = i => pad.l + i/(series.length-1) * (w-pad.l-pad.r);
+  const Y = v => pad.t + (1-(v-min)/(max-min)) * (h-pad.t-pad.b);
+  const up = series[series.length-1].v >= series[0].v;
+  const col = up ? '#2ecc8f' : '#ff5c72';
+
+  /* mreza in os */
+  c.strokeStyle = '#1f2836'; c.lineWidth = 1;
+  c.fillStyle = '#8b98ab'; c.font = '10px "IBM Plex Mono", monospace'; c.textAlign = 'right';
+  for(let i=0;i<=4;i++){
+    const v = min + (max-min)*i/4, y = Y(v);
+    c.beginPath(); c.moveTo(pad.l,y); c.lineTo(w-pad.r,y); c.stroke();
+    c.fillText(v.toLocaleString('sl-SI',{maximumFractionDigits:2}), pad.l-8, y+3);
+  }
+  /* casovne oznake */
+  c.textAlign = 'center';
+  const long = RANGES[activeRange][1] !== '1d';
+  for(let i=0;i<4;i++){
+    const idx = Math.round(i/3*(series.length-1));
+    const dt = new Date(series[idx].t);
+    const lbl = long ? dt.toLocaleDateString('sl-SI',{day:'2-digit',month:'2-digit',year:'2-digit'})
+                     : dt.toLocaleTimeString('sl-SI',{hour:'2-digit',minute:'2-digit'});
+    c.fillText(lbl, Math.min(w-pad.r-20, Math.max(pad.l+20, X(idx))), h-8);
+  }
+  /* ploskev */
+  const g = c.createLinearGradient(0,pad.t,0,h-pad.b);
+  g.addColorStop(0, up ? 'rgba(46,204,143,.28)' : 'rgba(255,92,114,.28)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.beginPath(); c.moveTo(X(0), h-pad.b);
+  series.forEach((p,i) => c.lineTo(X(i), Y(p.v)));
+  c.lineTo(X(series.length-1), h-pad.b); c.closePath();
+  c.fillStyle = g; c.fill();
+  /* crta */
+  c.beginPath();
+  series.forEach((p,i) => i ? c.lineTo(X(i), Y(p.v)) : c.moveTo(X(i), Y(p.v)));
+  c.strokeStyle = col; c.lineWidth = 1.6; c.lineJoin = 'round'; c.stroke();
+
+  canvas._map = {X, Y, pad, w, h};
+}
+
+canvas.addEventListener('mousemove', e => {
+  if(!series || !canvas._map) return;
+  const r = canvas.getBoundingClientRect();
+  const x = e.clientX - r.left;
+  const {pad, w} = canvas._map;
+  const frac = (x - pad.l) / (w - pad.l - pad.r);
+  const i = Math.max(0, Math.min(series.length-1, Math.round(frac*(series.length-1))));
+  const p = series[i];
+  const dt = new Date(p.t);
+  cross.style.display = 'block';
+  cross.style.left = Math.min(r.width-140, Math.max(0, x)) + 20 + 'px';
+  cross.style.top = '24px';
+  cross.innerHTML = `<b>${p.v.toLocaleString('sl-SI',{maximumFractionDigits:4})}</b><br>
+    <span style="color:var(--dim)">${dt.toLocaleString('sl-SI')}</span>`;
+});
+canvas.addEventListener('mouseleave', () => cross.style.display = 'none');
+window.addEventListener('resize', () => { if(openSym) drawChart(); });
+
+/* =======================================================================
+   5. TRAK
+   ======================================================================= */
+
+const TAPE = ['^GSPC','^NDX','^GDAXI','^STOXX50E','KRKG.LJ','NLBR.LJ','ZVTG.LJ','PETG.LJ',
+              'GC=F','CL=F','NG=F','EURUSD=X','AAPL','NVDA','MSFT','TSLA','ASML','BTC-USD'];
+async function buildTape(){
+  await loadQuotes(TAPE, () => {});
+  const html = TAPE.map(s => {
+    const d = cache.get(s); if(!d || d.error) return '';
+    const up = d.pct >= 0;
+    return `<span class="tape-item" data-s="${s}"><b>${(NAMES[s]||s)}</b>
+      ${fmt(d.price, d.price<10?4:2)}
+      <span class="${up?'up':'down'}">${up?'▲':'▼'} ${fmt(Math.abs(d.pct))} %</span></span>`;
+  }).join('');
+  document.getElementById('tape').innerHTML = html + html;
+}
+document.getElementById('tape').addEventListener('click', e => {
+  const it = e.target.closest('.tape-item'); if(it) openDetail(it.dataset.s);
+});
+
+/* zagon */
+render();
+buildTape();
+</script>
+</body>
+</html>
