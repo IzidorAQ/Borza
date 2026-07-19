@@ -56,6 +56,7 @@ input[type=search]{min-width:150px}
 .card:hover{background:var(--panel-2)}
 .ident .nm{font-family:'Archivo';font-size:15px;font-weight:700;line-height:1.2}
 .ident .co{color:var(--dim);font-size:10.5px;margin-top:3px;letter-spacing:.04em;text-transform:uppercase}
+.ident .cap{color:var(--amber);opacity:.85}
 .quotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
 .q{border-left:2px solid var(--line);padding:2px 0 2px 10px;min-width:0}
 .q.zda{border-color:rgba(79,214,255,.55)}
@@ -135,7 +136,8 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
 
 <div class="toolbar">
   <div class="tabs" role="tablist">
-    <button class="tab" role="tab" data-list="vse" aria-selected="true">Vsa podjetja</button>
+    <button class="tab" role="tab" data-list="top500" aria-selected="true">Največjih 500</button>
+    <button class="tab" role="tab" data-list="vse">Vsa podjetja</button>
     <button class="tab" role="tab" data-list="dvojne">Dvojne kotacije</button>
     <button class="tab" role="tab" data-list="evropa">Evropa</button>
     <button class="tab" role="tab" data-list="severna">Amerika</button>
@@ -147,6 +149,7 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
   </div>
   <input type="search" id="q" placeholder="Podjetje ali simbol">
   <select id="sort">
+    <option value="cap">Razvrsti: tržna kapitalizacija</option>
     <option value="az">Razvrsti: po abecedi</option>
     <option value="pct">Razvrsti: dnevna sprememba</option>
     <option value="ext">Razvrsti: izven redne seje</option>
@@ -972,6 +975,15 @@ function simple(list, tag){
   return list.map(([sym,name]) => ({name, country:tag, region:tag,
     listings:[{slot: sym.endsWith('.LJ') ? 'eu' : 'dom', sym, venue: tag + ' · ' + venueName(sym)}]}));
 }
+/* Za kapitalizacijo uporabimo matično kotacijo, ne potrdila ADR:
+   evropsko podjetje se meri po evropski borzi, azijsko po domači. */
+COMPANIES.forEach(c => {
+  const by = slot => c.listings.find(l => l.slot === slot);
+  c.rankListing = (c.region === 'evropa' ? (by('eu') || by('dom') || by('zda'))
+                 : c.region === 'severna' ? (by('zda') || by('dom') || by('eu'))
+                 : (by('dom') || by('zda') || by('eu')));
+});
+
 const GROUPS = {
   vse: COMPANIES,
   dvojne: COMPANIES.filter(c => c.listings.length > 1),
@@ -995,6 +1007,71 @@ const PROXIES = [
 let proxyIdx = 0, netOk = 0, netFail = 0;
 const cache = new Map(), histCache = new Map();
 let fxEurUsd = null;
+const FX = {EUR:1};                 // valuta -> koliko enot za 1 EUR
+const capEur = new Map();           // ime podjetja -> kapitalizacija v EUR
+let capState = 'pending';           // pending | ok | fail
+
+const FX_PAIRS = ['USD','GBP','CHF','JPY','SEK','DKK','NOK','CAD','AUD','HKD','CNY',
+                  'INR','KRW','TWD','BRL','MXN','SAR','ILS','SGD','PLN','CZK','HUF'];
+
+async function loadFx(){
+  await Promise.all(FX_PAIRS.map(async cur => {
+    try{
+      const res = await getChart(`EUR${cur}=X`, '5d', '1d');
+      const m = res.meta || {};
+      const v = m.regularMarketPrice ?? m.chartPreviousClose;
+      if(v) FX[cur] = v;
+    }catch(e){}
+  }));
+  if(FX.USD) fxEurUsd = FX.USD;
+}
+function toEur(value, cur){
+  if(value == null) return null;
+  if(cur === 'GBp'){ return FX.GBP ? value/100/FX.GBP : null; }
+  if(cur === 'ILA'){ return FX.ILS ? value/100/FX.ILS : null; }
+  if(cur === 'ZAc'){ return null; }
+  const r = FX[cur];
+  return r ? value / r : null;
+}
+
+/* Paketni prenos tržne kapitalizacije. Vrednosti niso vpisane v stran,
+   ampak se ob vsakem zagonu preberejo pri viru. */
+async function loadCaps(){
+  const jobs = COMPANIES.map(c => c.rankListing).filter(Boolean);
+  const bySym = new Map();
+  COMPANIES.forEach(c => { if(c.rankListing) bySym.set(c.rankListing.sym, c); });
+  const syms = [...bySym.keys()];
+  const CH = 40;
+  let got = 0;
+  setStatus('berem kapitalizacije');
+  for(let i=0;i<syms.length;i+=CH){
+    const batch = syms.slice(i, i+CH);
+    const url = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' +
+                encodeURIComponent(batch.join(','));
+    try{
+      const r = await fetch(PROXIES[proxyIdx](url), {cache:'no-store'});
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      const list = j?.quoteResponse?.result || [];
+      if(!list.length) throw new Error('prazno');
+      list.forEach(q => {
+        const c = bySym.get(q.symbol);
+        if(!c) return;
+        const eur = toEur(q.marketCap, q.currency);
+        if(eur){ capEur.set(c.name, eur); got++; }
+      });
+    }catch(e){ /* paket preskočimo, ostali se še naprej berejo */ }
+    setStatus(`kapitalizacije ${Math.min(i+CH, syms.length)}/${syms.length}`);
+  }
+  capState = got > 50 ? 'ok' : 'fail';
+  if(capState === 'fail'){
+    if(sortEl.value === 'cap') sortEl.value = 'az';
+    const n = document.getElementById('notice');
+    n.className = 'notice show';
+    n.textContent = 'Tržnih kapitalizacij ni bilo mogoče prebrati, zato je razvrstitev abecedna in zavihek Največjih 500 prikazuje celotno bazo. Vir za kapitalizacije je strožje omejen kot vir za tečaje. Poskusi drug posrednik in pritisni Osveži.';
+  }
+  render();
+}
 
 function yUrl(sym, range, interval, prepost){
   return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}`
@@ -1123,12 +1200,36 @@ function fmt(v, d=2){
 }
 function primary(c){ return cache.get(c.listings[0].sym); }
 
+function capRanked(){
+  const withCap = COMPANIES.filter(c => capEur.has(c.name));
+  withCap.sort((a,b) => capEur.get(b.name) - capEur.get(a.name));
+  withCap.forEach((c,i) => c.rank = i+1);
+  return withCap;
+}
+function groupList(){
+  if(group === 'top500'){
+    const r = capRanked();
+    return r.length ? r.slice(0,500) : COMPANIES;
+  }
+  return GROUPS[group];
+}
+
 function filtered(){
+  capRanked();
   const q = qEl.value.trim().toLowerCase();
-  let arr = GROUPS[group];
+  let arr = groupList();
   if(q) arr = arr.filter(c => c.name.toLowerCase().includes(q) ||
     c.listings.some(l => l.sym.toLowerCase().includes(q)) || c.country.toLowerCase().includes(q));
   const s = sortEl.value;
+  if(s === 'cap'){
+    return [...arr].sort((a,b) => {
+      const A = capEur.get(a.name), B = capEur.get(b.name);
+      if(A == null && B == null) return a.name.localeCompare(b.name,'sl');
+      if(A == null) return 1;
+      if(B == null) return -1;
+      return B - A;
+    });
+  }
   if(s === 'az') return [...arr].sort((a,b) => a.name.localeCompare(b.name,'sl'));
   const val = c => {
     const d = primary(c); if(!d || d.error) return null;
@@ -1180,6 +1281,19 @@ function quoteHTML(l){
     ${ext}${sparkSVG(d.spark, up)}</div>`;
 }
 
+function capFmt(v){
+  if(v == null) return '';
+  if(v >= 1e12) return (v/1e12).toLocaleString('sl-SI',{maximumFractionDigits:2}) + ' bil. €';
+  if(v >= 1e9)  return (v/1e9 ).toLocaleString('sl-SI',{maximumFractionDigits:0}) + ' mrd €';
+  return (v/1e6).toLocaleString('sl-SI',{maximumFractionDigits:0}) + ' mio €';
+}
+function capLabel(c){
+  const v = capEur.get(c.name);
+  if(v == null) return '';
+  const r = c.rank ? `#${c.rank} · ` : '';
+  return ` <span class="cap">${r}${capFmt(v)}</span>`;
+}
+
 function render(){
   const arr = filtered();
   const pages = Math.max(1, Math.ceil(arr.length/perPage));
@@ -1188,12 +1302,16 @@ function render(){
   const slice = arr.slice(page*perPage, page*perPage+perPage);
   cardsEl.innerHTML = slice.map((c,i) => `
     <div class="card" data-i="${page*perPage+i}">
-      <div class="ident"><div class="nm">${c.name}</div><div class="co">${c.country}</div></div>
+      <div class="ident">
+        <div class="nm">${c.name}</div>
+        <div class="co">${c.country}${capLabel(c)}</div>
+      </div>
       <div class="quotes">${c.listings.map(quoteHTML).join('')}</div>
     </div>`).join('');
   cardsEl._slice = slice;
   document.getElementById('count').textContent =
-    `${arr.length} podjetij v izboru · ${GROUPS.vse.length} v celotni bazi · ${GROUPS.dvojne.length} z več kot eno kotacijo`;
+    `${arr.length} podjetij v izboru · ${GROUPS.vse.length} v bazi · ${GROUPS.dvojne.length} z več kotacijami · " +
+    "kapitalizacija: ${capState === 'ok' ? capEur.size + ' prebranih' : capState === 'fail' ? 'ni na voljo' : 'berem'}`;
   document.getElementById('pageInfo').textContent =
     `${arr.length ? page*perPage+1 : 0}–${Math.min(arr.length,(page+1)*perPage)} od ${arr.length}`;
 
@@ -1227,10 +1345,15 @@ document.getElementById('prev').onclick = () => { if(page>0){ page--; render(); 
 document.getElementById('next').onclick = () => { page++; render(); scrollTo(0,0); };
 document.getElementById('proxy').onchange = e => {
   proxyIdx = +e.target.value; netOk = 0; netFail = 0;
-  cache.clear(); histCache.clear(); render(); buildTape();
+  cache.clear(); histCache.clear(); capEur.clear(); capState = 'pending';
+  render(); buildTape();
+  loadFx().then(loadCaps);
 };
-document.getElementById('refresh').onclick = () => {
-  cache.clear(); histCache.clear(); netOk = 0; netFail = 0; render(); buildTape();
+document.getElementById('refresh').onclick = async () => {
+  cache.clear(); histCache.clear(); netOk = 0; netFail = 0; capEur.clear(); capState = 'pending';
+  render(); buildTape();
+  if(!FX.USD) await loadFx();
+  loadCaps();
 };
 let timer = null;
 document.getElementById('auto').onclick = e => {
@@ -1312,7 +1435,9 @@ function drawStats(){
     ['52 tednov', d.wk52l != null ? `${fmt(d.wk52l)} – ${fmt(d.wk52h)}` : '-'],
     ['Zadnje zaprtje', fmt(d.prev)],
     ['Promet', d.vol != null ? d.vol.toLocaleString('sl-SI') : '-'],
-    ['Ime pri viru', d.srcName || '-']
+    ['Ime pri viru', d.srcName || '-'],
+    ['Tržna kapitalizacija', capEur.has(openCo.name)
+      ? capFmt(capEur.get(openCo.name)) + (openCo.rank ? ` · ${openCo.rank}. na svetu v tej bazi` : '') : '-']
   ];
   /* primerjava kotacij v evrih */
   if(openCo.listings.length > 1 && fxEurUsd){
@@ -1448,6 +1573,10 @@ async function buildTape(){
 }
 render();
 buildTape();
+(async () => {
+  await loadFx();
+  await loadCaps();
+})();
 </script>
 </body>
 </html>
