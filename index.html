@@ -82,7 +82,7 @@ input[type=search]{min-width:170px}
 .status{color:var(--dim);font-size:11px;margin-left:auto}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);margin-right:6px}
 .dot.live{background:var(--up);box-shadow:0 0 8px var(--up)}
-.dot.demo{background:var(--amber)}
+.dot.err{background:var(--down);box-shadow:0 0 8px var(--down)}
 
 .notice{
   display:none;padding:10px 20px;background:#2a2113;border-bottom:1px solid #4a3a1a;
@@ -113,6 +113,15 @@ tbody tr:hover{background:var(--panel-2)}
 .pill{padding:2px 6px;border-radius:3px;font-size:12px}
 .pill.up{background:rgba(46,204,143,.12)}
 .pill.down{background:rgba(255,92,114,.12)}
+.tag{display:inline-block;font-size:9.5px;letter-spacing:.08em;padding:2px 5px;border-radius:2px;
+     border:1px solid var(--line);color:var(--dim);vertical-align:middle}
+.tag.open{color:var(--up);border-color:rgba(46,204,143,.4)}
+.tag.pre{color:var(--cyan);border-color:rgba(79,214,255,.4)}
+.tag.post{color:var(--amber);border-color:rgba(255,181,71,.4)}
+.tag.closed{opacity:.6}
+.ext-p{color:var(--text)}
+.muted{color:var(--dim);font-size:11px}
+td.ses{color:var(--dim)}
 .pager{display:flex;gap:8px;align-items:center;justify-content:center;padding:16px}
 
 /* ---------- modal ---------- */
@@ -174,7 +183,7 @@ footer{padding:20px;color:var(--dim);font-size:11px;line-height:1.7;border-top:1
   tbody tr{
     display:grid;
     grid-template-columns:minmax(0,1fr) 62px auto;
-    grid-template-areas:"sym spark price" "name spark pct";
+    grid-template-areas:"sym spark price" "name spark pct" "ses ses ses";
     align-items:center;column-gap:10px;
     padding:11px 14px;border-bottom:1px solid #1c2430;
   }
@@ -188,6 +197,8 @@ footer{padding:20px;color:var(--dim);font-size:11px;line-height:1.7;border-top:1
   tbody td:nth-child(4){grid-area:price;font-size:15px;font-weight:600}
   tbody td:nth-child(5){display:none}
   tbody td:nth-child(6){grid-area:pct;font-size:12px}
+  tbody td:nth-child(7){grid-area:ses;text-align:left;margin-top:6px;font-size:11.5px}
+  tbody td:nth-child(7):empty{display:none}
   tbody tr.msg{display:flex;gap:8px;align-items:baseline}
   tbody tr.msg td{white-space:nowrap}
   tbody tr.msg td[colspan]{margin-left:auto}
@@ -253,7 +264,7 @@ footer{padding:20px;color:var(--dim);font-size:11px;line-height:1.7;border-top:1
         <th data-sort="price">Tečaj</th>
         <th data-sort="chg">Sprem.</th>
         <th data-sort="pct" class="sorted">Sprem. %</th>
-        <th data-sort="cap" class="hide-s">Kap. / valuta</th>
+        <th data-sort="extpct">Izven redne seje</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
@@ -288,8 +299,10 @@ footer{padding:20px;color:var(--dim);font-size:11px;line-height:1.7;border-top:1
 </div>
 
 <footer>
-  Tečaji so informativne narave in niso primerni za trgovalne odločitve. Stran kliče javni Yahoo Finance vmesnik prek brezplačnega posrednika, ki lahko občasno omeji število zahtev. Če posrednik ne odgovori, stran preklopi v predstavitveni način s simuliranimi vrednostmi in to jasno označi.
-</footer>
+  Tečaji so informativne narave in niso primerni za trgovalne odločitve. Stran kliče javni Yahoo Finance vmesnik prek brezplačnega posrednika, ki lahko občasno omeji število zahtevkov. Če podatki ne pridejo, ostanejo polja prazna in stran to izpiše. Nobena prikazana številka ni simulirana.
+  <br><br>
+  Stolpec Izven redne seje kaže tečaj pred odprtjem oziroma po zaprtju borze. Sprememba pred odprtjem se meri glede na zadnje zaključno vrednost, sprememba po zaprtju pa glede na današnji zaključni tečaj. Predtrgovanje in potrgovanje obstajata predvsem na ameriških borzah, za surovine, terminske pogodbe in Ljubljansko borzo je prikazano le stanje seje.
+  </footer>
 
 <script>
 /* =======================================================================
@@ -353,16 +366,17 @@ const PROXIES = [
   u => u
 ];
 let proxyIdx = 0;
-let demoMode = false;
+let netFail = 0, netOk = 0;
 const cache = new Map();      // simbol -> podatki o tečaju
 const histCache = new Map();  // simbol|obdobje -> serija
 
-function yUrl(sym, range, interval){
-  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}`;
+function yUrl(sym, range, interval, prepost){
+  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}`
+       + `?range=${range}&interval=${interval}${prepost ? '&includePrePost=true' : ''}`;
 }
 
-async function getChart(sym, range='1d', interval='5m'){
-  const url = PROXIES[proxyIdx](yUrl(sym, range, interval));
+async function getChart(sym, range='1d', interval='5m', prepost=false){
+  const url = PROXIES[proxyIdx](yUrl(sym, range, interval, prepost));
   const r = await fetch(url, {cache:'no-store'});
   if(!r.ok) throw new Error('HTTP ' + r.status);
   const j = await r.json();
@@ -371,69 +385,99 @@ async function getChart(sym, range='1d', interval='5m'){
   return res;
 }
 
+/* Razdeli dnevno serijo na predtrgovanje, redno sejo in potrgovanje. */
 function parseQuote(sym, res){
-  const m = res.meta || {};
-  const closes = (res.indicators?.quote?.[0]?.close || []).filter(v=>v!=null);
-  const price = m.regularMarketPrice ?? closes[closes.length-1];
-  const prev  = m.chartPreviousClose ?? m.previousClose ?? closes[0];
+  const m  = res.meta || {};
+  const ts = res.timestamp || [];
+  const cl = res.indicators?.quote?.[0]?.close || [];
+  const pts = [];
+  for(let i=0;i<ts.length;i++) if(cl[i]!=null) pts.push({t:ts[i], v:cl[i]});
+
+  const per = m.currentTradingPeriod || {};
+  const rs = per.regular?.start, re = per.regular?.end;
+  const now = Math.floor(Date.now()/1000);
+
+  let regPts = pts, prePts = [], postPts = [];
+  if(rs && re){
+    regPts  = pts.filter(p => p.t >= rs && p.t <= re);
+    prePts  = pts.filter(p => p.t <  rs);
+    postPts = pts.filter(p => p.t >  re);
+  }
+
+  const prev = m.chartPreviousClose ?? m.previousClose;
+  const price = regPts.length ? regPts[regPts.length-1].v : (m.regularMarketPrice ?? prev);
+
+  let state = 'closed';
+  if(rs && re){
+    if(now >= rs && now <= re) state = 'open';
+    else if(per.pre  && now >= per.pre.start  && now <  rs) state = 'pre';
+    else if(per.post && now >  re && now <= per.post.end)   state = 'post';
+  }
+
+  /* Izven redne seje: pred odprtjem se meri proti zadnjemu zaprtju,
+     po zaprtju proti današnjemu zaključnemu tečaju. */
+  let ext = null;
+  if(prePts.length  && (state === 'pre'))  ext = {kind:'pre',  price:prePts[prePts.length-1].v,   base:prev};
+  if(postPts.length && (state === 'post' || state === 'closed'))
+    ext = {kind:'post', price:postPts[postPts.length-1].v, base:price};
+  if(ext){
+    ext.label = ext.kind === 'pre' ? 'pred odprtjem' : 'po zaprtju';
+    ext.chg = ext.price - ext.base;
+    ext.pct = ext.base ? ext.chg / ext.base * 100 : 0;
+  }
+
   return {
     symbol: sym,
     name: NAMES[sym] || m.longName || m.shortName || sym,
     price, prev,
     chg: price - prev,
     pct: prev ? (price - prev) / prev * 100 : 0,
+    state, ext,
     cur: m.currency || '',
     exch: m.exchangeName || m.fullExchangeName || '',
     high: m.regularMarketDayHigh, low: m.regularMarketDayLow,
     vol: m.regularMarketVolume,
     wk52h: m.fiftyTwoWeekHigh, wk52l: m.fiftyTwoWeekLow,
     tz: m.exchangeTimezoneName || '',
-    spark: closes.slice(-40),
+    spark: (regPts.length ? regPts : pts).slice(-40).map(p=>p.v),
     ts: Date.now()
   };
-}
-
-/* Simulirane vrednosti, kadar omrežje ni dosegljivo. */
-function demoQuote(sym){
-  let h = 0; for(const c of sym) h = (h*31 + c.charCodeAt(0)) & 0xffffff;
-  const base = 8 + (h % 4000) / 10;
-  const pct = ((h % 733) / 733 - .5) * 5;
-  const price = base * (1 + pct/100);
-  const spark = Array.from({length:40}, (_,i) =>
-    base * (1 + Math.sin(i/5 + h%7)*0.012 + (i/40)*(pct/100)));
-  return {symbol:sym, name:NAMES[sym]||sym, price, prev:base, chg:price-base, pct,
-          cur:'USD', exch:'demo', spark, demo:true, ts:Date.now()};
 }
 
 async function loadQuotes(symbols, onEach){
   const queue = symbols.filter(s => !cache.has(s) || Date.now()-cache.get(s).ts > 55000);
   if(!queue.length){ symbols.forEach(s=>onEach(s)); return; }
-  let failures = 0, done = 0;
+  let done = 0;
   const workers = Array.from({length:6}, async () => {
     while(queue.length){
       const s = queue.shift();
       try{
-        const res = await getChart(s);
+        const res = await getChart(s, '1d', '5m', true);
         cache.set(s, parseQuote(s, res));
+        netOk++;
       }catch(e){
-        failures++;
-        if(failures > 4 && !demoMode) enterDemo();
-        cache.set(s, demoMode ? demoQuote(s) : {symbol:s, name:NAMES[s]||s, error:true, ts:Date.now()});
+        netFail++;
+        cache.set(s, {symbol:s, name:NAMES[s]||s, error:true, why:String(e.message||e), ts:Date.now()});
       }
       done++; onEach(s); setStatus(`nalagam ${done}/${done+queue.length}`);
     }
   });
   await Promise.all(workers);
-  if(!demoMode){ setStatus('posodobljeno ' + new Date().toLocaleTimeString('sl-SI')); dot.className='dot live'; }
+  updateHealth();
 }
 
-function enterDemo(){
-  demoMode = true;
-  dot.className = 'dot demo';
-  setStatus('predstavitveni način');
+function updateHealth(){
   const n = document.getElementById('notice');
-  n.className = 'notice show';
-  n.textContent = 'Živih podatkov ni bilo mogoče prenesti. Prikazane so simulirane vrednosti. V spustnem meniju izberi drug posrednik in pritisni Osveži. Če stran odpiraš lokalno z dvoklikom, posredniki običajno delujejo, blokira pa jih lahko požarni zid ali blokator oglasov.';
+  if(netOk === 0 && netFail > 0){
+    dot.className = 'dot err';
+    setStatus('vir ni dosegljiv');
+    n.className = 'notice show';
+    n.textContent = 'Tečajev ni bilo mogoče prenesti, zato so polja prazna. Nobena vrednost na tej strani ni izmišljena. Poskusi drug posrednik v spustnem meniju in pritisni Osveži. Zahtevke lahko blokira tudi blokator oglasov, VPN ali omejitev števila klicev pri posredniku.';
+  }else{
+    dot.className = 'dot live';
+    setStatus('posodobljeno ' + new Date().toLocaleTimeString('sl-SI'));
+    n.className = 'notice';
+  }
 }
 
 const dot = document.getElementById('dot');
@@ -459,7 +503,8 @@ function visibleSymbols(){
       if(!A && !B) return 0;
       if(!A) return 1;
       if(!B) return -1;
-      const va = A[sortKey], vb = B[sortKey];
+      const pick = o => sortKey === 'extpct' ? (o.ext ? o.ext.pct : null) : o[sortKey];
+      const va = pick(A), vb = pick(B);
       if(typeof va === 'string') return va.localeCompare(vb) * sortDir;
       return ((vb ?? -1e18) - (va ?? -1e18)) * sortDir * -1 * -1;
     });
@@ -501,7 +546,7 @@ function render(){
       <td>${fmt(d.price, d.price<10?4:2)}</td>
       <td class="${cls}">${up?'+':''}${fmt(d.chg, Math.abs(d.chg)<1?4:2)}</td>
       <td><span class="pill ${cls}">${up?'+':''}${fmt(d.pct)} %</span></td>
-      <td class="hide-s" style="color:var(--dim)">${d.cur||''} ${d.exch?'· '+d.exch:''}</td>
+      <td class="ses">${sessionCell(d)}</td>
     </tr>`;
   }).join('');
   document.getElementById('pageInfo').textContent =
@@ -525,6 +570,19 @@ function paintOnly(){
     tr.replaceWith(tmp.firstElementChild);
   });
 }
+function sessionCell(d){
+  if(d.ext){
+    const up = d.ext.pct >= 0;
+    return `<span class="tag ${d.ext.kind}">${d.ext.kind === 'pre' ? 'PRED ODPRTJEM' : 'PO ZAPRTJU'}</span>
+      <span class="ext-p">${fmt(d.ext.price, d.ext.price<10?4:2)}</span>
+      <span class="${up?'up':'down'}">${up?'+':''}${fmt(d.ext.pct)} %</span>`;
+  }
+  if(d.state === 'open')   return `<span class="tag open">TRGUJE</span>`;
+  if(d.state === 'pre')    return `<span class="tag pre">PRED ODPRTJEM</span> <span class="muted">brez poslov</span>`;
+  if(d.state === 'post')   return `<span class="tag post">PO ZAPRTJU</span> <span class="muted">brez poslov</span>`;
+  return `<span class="tag closed">ZAPRTO</span>`;
+}
+
 function rowHTML(s, d){
   if(d.error) return `<tr class="msg" data-s="${s}" data-done="${d.ts}"><td class="tk">${s}</td>
     <td class="nm">${d.name}</td><td class="sp"></td>
@@ -536,7 +594,7 @@ function rowHTML(s, d){
     <td>${fmt(d.price, d.price<10?4:2)}</td>
     <td class="${cls}">${up?'+':''}${fmt(d.chg, Math.abs(d.chg)<1?4:2)}</td>
     <td><span class="pill ${cls}">${up?'+':''}${fmt(d.pct)} %</span></td>
-    <td class="hide-s" style="color:var(--dim)">${d.cur||''} ${d.exch?'· '+d.exch:''}</td></tr>`;
+    <td class="ses">${sessionCell(d)}</td></tr>`;
 }
 
 /* upravljanje */
@@ -555,11 +613,11 @@ qEl.addEventListener('input', () => { page = 0; render(); });
 document.getElementById('prev').onclick = () => { if(page>0){ page--; render(); } };
 document.getElementById('next').onclick = () => { page++; render(); };
 document.getElementById('proxy').onchange = e => {
-  proxyIdx = +e.target.value; demoMode = false;
+  proxyIdx = +e.target.value; netOk = 0; netFail = 0;
   document.getElementById('notice').className = 'notice';
   cache.clear(); histCache.clear(); render(); buildTape();
 };
-document.getElementById('refresh').onclick = () => { cache.clear(); render(); buildTape(); };
+document.getElementById('refresh').onclick = () => { cache.clear(); histCache.clear(); netOk = 0; netFail = 0; render(); buildTape(); };
 let timer = null;
 document.getElementById('auto').onclick = e => {
   if(timer){ clearInterval(timer); timer = null; e.target.classList.remove('on'); }
@@ -603,8 +661,14 @@ function openDetail(sym){
     `${sym}${d.exch ? ' · ' + d.exch : ''}${d.cur ? ' · ' + d.cur : ''}${d.tz ? ' · ' + d.tz : ''}`;
   document.getElementById('mPrice').textContent = fmt(d.price, d.price<10?4:2);
   const up = (d.pct ?? 0) >= 0;
+  const eu = d.ext ? d.ext.pct >= 0 : true;
   document.getElementById('mChg').innerHTML =
-    `<span class="${up?'up':'down'}">${up?'+':''}${fmt(d.chg)} (${up?'+':''}${fmt(d.pct)} %)</span>`;
+    `<span class="${up?'up':'down'}">${up?'+':''}${fmt(d.chg)} (${up?'+':''}${fmt(d.pct)} %)</span>`
+    + (d.ext ? `<div style="margin-top:6px;font-size:12px">
+        <span class="tag ${d.ext.kind}">${d.ext.kind==='pre'?'PRED ODPRTJEM':'PO ZAPRTJU'}</span>
+        ${fmt(d.ext.price, d.ext.price<10?4:2)}
+        <span class="${eu?'up':'down'}">${eu?'+':''}${fmt(d.ext.pct)} %</span></div>`
+      : `<div style="margin-top:6px"><span class="tag ${d.state==='open'?'open':'closed'}">${d.state==='open'?'TRGUJE':'ZAPRTO'}</span></div>`);
   renderStats(d);
   loadSeries();
 }
@@ -620,7 +684,10 @@ function renderStats(d){
     ['52 tednov', d.wk52l!=null ? `${fmt(d.wk52l)} – ${fmt(d.wk52h)}` : '-'],
     ['Promet', d.vol!=null ? d.vol.toLocaleString('sl-SI') : '-'],
     ['Valuta', d.cur || '-'],
-    ['Borza', d.exch || '-']
+    ['Borza', d.exch || '-'],
+    ['Redna seja', d.state === 'open' ? 'poteka' : d.state === 'pre' ? 'še ni odprta'
+       : d.state === 'post' ? 'zaključena' : 'zaprto'],
+    ['Izven redne seje', d.ext ? `${fmt(d.ext.price)} (${d.ext.pct>=0?'+':''}${fmt(d.ext.pct)} %)` : '-']
   ];
   document.getElementById('mStats').innerHTML = rows.map(([k,v]) =>
     `<div class="stat"><b>${k}</b><span>${v}</span></div>`).join('');
@@ -632,7 +699,7 @@ async function loadSeries(){
   series = null; drawChart('Nalagam zgodovino');
   if(histCache.has(key)){ series = histCache.get(key); drawChart(); return; }
   try{
-    const res = await getChart(openSym, range, interval);
+    const res = await getChart(openSym, range, interval, range === '1d' || range === '5d');
     const ts = res.timestamp || [];
     const cl = res.indicators?.quote?.[0]?.close || [];
     const pts = [];
@@ -640,16 +707,7 @@ async function loadSeries(){
     if(!pts.length) throw new Error('prazno');
     series = pts; histCache.set(key, pts); drawChart();
   }catch(err){
-    if(demoMode){
-      const d = cache.get(openSym) || demoQuote(openSym);
-      const n = 120, out = [];
-      let v = d.price * 0.85;
-      for(let i=0;i<n;i++){ v *= 1 + (Math.sin(i/7)*0.01 + (Math.random()-.48)*0.012); 
-        out.push({t: Date.now() - (n-i)*86400000, v}); }
-      series = out; drawChart();
-    }else{
-      drawChart('Za to obdobje ni podatkov');
-    }
+    drawChart('Podatkov za to obdobje ni bilo mogoče prenesti');
   }
 }
 
