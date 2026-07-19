@@ -173,7 +173,9 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
   </select>
   <button class="btn" id="refresh">Osveži</button>
   <button class="btn" id="auto">Auto 60s</button>
+  <button class="btn" id="slow">Počasen način</button>
   <button class="btn" id="diag">Diagnostika</button>
+  <input type="search" id="ownProxy" placeholder="Lasten proxy, npr. https://moj.workers.dev/?url=" style="min-width:210px">
   <div class="status"><span class="dot" id="dot"></span><span id="statusText">pripravljen</span></div>
 </div>
 
@@ -1023,6 +1025,28 @@ const PROXIES = [
 let proxyIdx = 0, netOk = 0, netFail = 0;
 const cache = new Map(), histCache = new Map();
 let fxEurUsd = null;
+/* Kapitalizacije se spreminjajo počasi, zato jih shranimo za sedem dni.
+   Če shramba ni na voljo, vse teče iz pomnilnika kot doslej. */
+const LS = (() => {
+  try{ localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return localStorage; }
+  catch(e){ return null; }
+})();
+function capsSave(){
+  if(!LS) return;
+  try{ LS.setItem('bt_caps_v1', JSON.stringify({t:Date.now(), fx:FX, d:[...capEur]})); }catch(e){}
+}
+function capsLoad(){
+  if(!LS) return 0;
+  try{
+    const o = JSON.parse(LS.getItem('bt_caps_v1') || 'null');
+    if(!o || Date.now() - o.t > 7*864e5) return 0;
+    Object.assign(FX, o.fx || {});
+    (o.d || []).forEach(([k,v]) => capEur.set(k,v));
+    if(FX.USD) fxEurUsd = FX.USD;
+    return capEur.size;
+  }catch(e){ return 0; }
+}
+
 const FX = {EUR:1};                 // valuta -> koliko enot za 1 EUR
 const capEur = new Map();           // ime podjetja -> kapitalizacija v EUR
 let capState = 'pending';           // pending | ok | fail
@@ -1031,7 +1055,9 @@ const FX_PAIRS = ['USD','GBP','CHF','JPY','SEK','DKK','NOK','CAD','AUD','HKD','C
                   'INR','KRW','TWD','BRL','MXN','SAR','ILS','SGD','PLN','CZK','HUF'];
 
 async function loadFx(){
-  await Promise.all(FX_PAIRS.map(async cur => {
+  const need = FX_PAIRS.filter(c => !FX[c]);
+  if(!need.length) return;
+  await Promise.all(need.map(async cur => {
     try{
       const res = await getChart(`EUR${cur}=X`, '5d', '1d');
       const m = res.meta || {};
@@ -1040,6 +1066,7 @@ async function loadFx(){
     }catch(e){}
   }));
   if(FX.USD) fxEurUsd = FX.USD;
+  capsSave();
 }
 function toEur(value, cur){
   if(value == null) return null;
@@ -1069,11 +1096,7 @@ function currencyOf(sym){
   for(const [suf,cur] of CUR_BY_SUFFIX) if(sym.endsWith(suf)) return cur;
   return 'USD';
 }
-async function getJSON(url){
-  const r = await fetch(PROXIES[proxyIdx](url), {cache:'no-store'});
-  if(!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
-}
+async function getJSON(url){ return (await netFetch(url)).json(); }
 /* poišče najnovejšo vrednost reportedValue.raw kjerkoli v odgovoru */
 function deepCap(obj){
   let best = null, bestDate = '';
@@ -1141,10 +1164,16 @@ async function pickCapSource(sample){
   return null;
 }
 
+let capScanRunning = false;
 async function loadCaps(){
+  if(capScanRunning) return;
+  capScanRunning = true;
   const bySym = new Map();
-  COMPANIES.forEach(c => { if(c.rankListing) bySym.set(c.rankListing.sym, c); });
+  COMPANIES.forEach(c => {
+    if(c.rankListing && !capEur.has(c.name)) bySym.set(c.rankListing.sym, c);
+  });
   const syms = [...bySym.keys()];
+  if(!syms.length){ capState = 'ok'; capScanRunning = false; render(); return; }
   const sample = ['AAPL','MSFT','NESN.SW','7203.T'].filter(x => bySym.has(x)).concat(syms.slice(0,4));
 
   capState = 'pending';
@@ -1157,7 +1186,7 @@ async function loadCaps(){
   for(let i=0;i<syms.length;i+=src.batch) queue.push(syms.slice(i, i+src.batch));
 
   let done = 0, hits = 0;
-  const workers = Array.from({length: src.batch > 1 ? 2 : 5}, async () => {
+  const workers = Array.from({length: src.batch > 1 ? 2 : 2}, async () => {
     while(queue.length){
       const chunk = queue.shift();
       try{
@@ -1169,16 +1198,23 @@ async function loadCaps(){
         });
       }catch(e){}
       done += chunk.length;
-      if(done % 25 < chunk.length){
-        setStatus(`kapitalizacije ${done}/${syms.length}`);
-        capState = hits > 20 ? 'ok' : 'pending';
+      if(done % 20 < chunk.length){
+        setStatus(`kapitalizacije ${capEur.size}/${COMPANIES.length}`);
+        capState = capEur.size > 20 ? 'ok' : 'pending';
+        capsSave();
         render();
       }
     }
   });
   await Promise.all(workers);
-  capState = hits > 20 ? 'ok' : 'fail';
-  if(capState === 'fail') capFailed(); else { render(); health(); }
+  capScanRunning = false;
+  capState = capEur.size > 20 ? 'ok' : 'fail';
+  capsSave();
+  if(capState === 'fail') capFailed();
+  else{
+    setStatus(`kapitalizacije: ${capEur.size} od ${COMPANIES.length}`);
+    render();
+  }
 }
 
 function capFailed(){
@@ -1225,9 +1261,43 @@ function yUrl(sym, range, interval, prepost){
   return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}`
        + `?range=${range}&interval=${interval}${prepost ? '&includePrePost=true' : ''}`;
 }
+/* Posredniki imajo urne kvote. Zahtevke zato razmikamo in se ob
+   odgovoru 429 samodejno umaknemo, namesto da bi kvoto do konca porabili. */
+const NET = {gap: 320, last: 0, active: 0, max: 3, backoff: 0, rate429: 0};
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function netFetch(url, tries = 3){
+  for(let t = 0; t < tries; t++){
+    while(NET.active >= NET.max) await sleep(70);
+    NET.active++;
+    try{
+      const wait = Math.max(0, NET.last + NET.gap + NET.backoff - Date.now());
+      if(wait) await sleep(wait);
+      NET.last = Date.now();
+      const r = await fetch(PROXIES[proxyIdx](url), {cache:'no-store'});
+      if(r.status === 429){
+        NET.rate429++;
+        NET.backoff = Math.min(15000, (NET.backoff || 400) * 2);
+        if(NET.rate429 === 12) rateNotice();
+        continue;
+      }
+      NET.backoff = Math.max(0, NET.backoff - 250);
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r;
+    }finally{ NET.active--; }
+  }
+  throw new Error('429 kvota posrednika');
+}
+function rateNotice(){
+  const n = document.getElementById('notice');
+  n.className = 'notice show';
+  n.innerHTML = 'Posrednik je začel vračati 429, kar pomeni, da je njegova urna kvota polna. '
+    + 'Tečaji se bodo nalagali počasneje. Možnosti: izberi drug posrednik, vklopi Počasen način, '
+    + 'ali vpiši naslov svojega posrednika v polje Lasten proxy. Podatki niso napačni, le redkejši.';
+}
+
 async function getChart(sym, range='1d', interval='5m', prepost=false){
-  const r = await fetch(PROXIES[proxyIdx](yUrl(sym,range,interval,prepost)), {cache:'no-store'});
-  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const r = await netFetch(yUrl(sym,range,interval,prepost));
   const j = await r.json();
   const res = j?.chart?.result?.[0];
   if(!res) throw new Error('brez rezultata');
@@ -1358,8 +1428,12 @@ function capRanked(){
 }
 function groupList(){
   if(group === 'top500'){
-    const r = capRanked();
-    return r.length ? r.slice(0,500) : COMPANIES;
+    const ranked = capRanked();
+    if(ranked.length >= 500) return ranked.slice(0,500);
+    /* dokler kapitalizacije še niso prebrane, rangirana podjetja pridejo
+       na vrh, ostala pa ostanejo vidna spodaj */
+    const seen = new Set(ranked.map(c => c.name));
+    return ranked.concat(COMPANIES.filter(c => !seen.has(c.name))).slice(0,500);
   }
   return GROUPS[group];
 }
@@ -1498,7 +1572,10 @@ document.getElementById('prev').onclick = () => { if(page>0){ page--; render(); 
 document.getElementById('next').onclick = () => { page++; render(); scrollTo(0,0); };
 document.getElementById('proxy').onchange = e => {
   proxyIdx = +e.target.value; netOk = 0; netFail = 0;
-  cache.clear(); histCache.clear(); capEur.clear(); capState = 'pending';
+  NET.rate429 = 0; NET.backoff = 0;
+  if(ownEl) ownEl.value = '';
+  if(LS){ try{ LS.removeItem('bt_proxy'); }catch(err){} }
+  cache.clear(); histCache.clear(); capState = 'pending';
   render(); buildTape();
   loadFx().then(loadCaps);
 };
@@ -1508,6 +1585,29 @@ document.getElementById('refresh').onclick = async () => {
   if(!FX.USD) await loadFx();
   loadCaps();
 };
+document.getElementById('slow').onclick = e => {
+  const on = NET.gap < 900;
+  NET.gap = on ? 1100 : 320;
+  NET.max = on ? 1 : 3;
+  e.target.classList.toggle('on', on);
+  setStatus(on ? 'počasen način, manj zahtevkov na minuto' : 'običajna hitrost');
+};
+
+const ownEl = document.getElementById('ownProxy');
+if(LS && LS.getItem('bt_proxy')){ ownEl.value = LS.getItem('bt_proxy'); useOwnProxy(); }
+ownEl.addEventListener('change', () => { useOwnProxy(); });
+function useOwnProxy(){
+  const v = ownEl.value.trim();
+  if(LS){ try{ v ? LS.setItem('bt_proxy', v) : LS.removeItem('bt_proxy'); }catch(e){} }
+  if(!v){ proxyIdx = +document.getElementById('proxy').value; return; }
+  PROXIES[99] = u => v + (v.includes('?') ? '' : '?url=') + encodeURIComponent(u);
+  proxyIdx = 99;
+  NET.rate429 = 0; NET.backoff = 0;
+  cache.clear(); histCache.clear();
+  setStatus('uporabljam lasten proxy');
+  render(); buildTape();
+}
+
 document.getElementById('diag').onclick = () => {
   const n = document.getElementById('notice');
   n.className = 'notice show';
@@ -1731,9 +1831,12 @@ async function buildTape(){
   }).join('');
   document.getElementById('tape').innerHTML = html + html;
 }
+const cached = capsLoad();
+if(cached){ capState = 'ok'; setStatus(`${cached} kapitalizacij iz shrambe`); }
 render();
 buildTape();
 (async () => {
+  await sleep(1500);          // najprej naj se naložijo tečaji vidne strani
   await loadFx();
   await loadCaps();
 })();
