@@ -125,7 +125,7 @@ tbody tr:hover{background:var(--panel-2)}
   background:var(--panel);border:1px solid var(--line);border-radius:6px;
   width:min(980px,100%);max-height:92vh;overflow:auto;
 }
-.modal-head{display:flex;align-items:flex-start;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.modal-head{position:relative;display:flex;align-items:flex-start;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .modal-head h2{margin:0;font-size:26px;font-weight:900}
 .modal-head .meta{color:var(--dim);font-size:11px;margin-top:4px}
 .price-big{margin-left:auto;text-align:right}
@@ -135,7 +135,7 @@ tbody tr:hover{background:var(--panel-2)}
 .range{background:var(--ink);border:1px solid var(--line);color:var(--dim);font-family:inherit;font-size:11px;padding:5px 11px;border-radius:3px;cursor:pointer}
 .range[aria-pressed="true"]{background:var(--cyan);color:#08121a;border-color:var(--cyan)}
 .chart-box{position:relative;padding:12px 20px 0}
-canvas#chart{width:100%;height:320px;display:block}
+canvas#chart{width:100%;height:320px;display:block;touch-action:pan-y}
 .crosshair{
   position:absolute;pointer-events:none;background:var(--panel-2);border:1px solid var(--line);
   padding:6px 9px;font-size:11px;border-radius:3px;display:none;white-space:nowrap;z-index:2;
@@ -146,10 +146,68 @@ canvas#chart{width:100%;height:320px;display:block}
 .stat span{font-size:14px}
 footer{padding:20px;color:var(--dim);font-size:11px;line-height:1.7;border-top:1px solid var(--line)}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-@media(max-width:700px){
+/* ---------- pokončni telefonski prikaz ---------- */
+@media(max-width:760px){
+  body{font-size:14px}
   .hide-s{display:none}
-  header h1{font-size:18px}
-  .modal-head h2{font-size:20px}
+  header{padding:12px 14px 10px;gap:8px}
+  header h1{font-size:17px}
+  .sub{display:none}
+  .tape{height:30px}
+  .tape-item{padding:0 14px;font-size:11px}
+
+  .toolbar{
+    padding:9px 14px;gap:8px;position:sticky;top:0;z-index:20;
+    display:grid;grid-template-columns:1fr auto;align-items:center;
+  }
+  .tabs{grid-column:1/-1;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;padding:8px 14px;font-size:13px}
+  #q{grid-column:1/-1;width:100%;padding:10px}
+  #proxy{grid-column:1/2;width:100%}
+  #refresh,#auto{padding:9px 10px}
+  .status{grid-column:1/-1;margin:0;text-align:left}
+
+  /* tabela postane seznam kartic */
+  thead{display:none}
+  table,tbody,tr,td{display:block}
+  tbody tr{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 62px auto;
+    grid-template-areas:"sym spark price" "name spark pct";
+    align-items:center;column-gap:10px;
+    padding:11px 14px;border-bottom:1px solid #1c2430;
+  }
+  tbody tr:active{background:var(--panel-2)}
+  tbody td{padding:0;border:0;text-align:right}
+  tbody td:nth-child(1){grid-area:sym;text-align:left;font-size:15px}
+  tbody td:nth-child(2){grid-area:name;text-align:left}
+  tbody td:nth-child(2) .nm{font-size:11.5px;max-width:100%;white-space:nowrap}
+  tbody td:nth-child(3){grid-area:spark}
+  tbody td:nth-child(3) .spark{width:60px;height:26px}
+  tbody td:nth-child(4){grid-area:price;font-size:15px;font-weight:600}
+  tbody td:nth-child(5){display:none}
+  tbody td:nth-child(6){grid-area:pct;font-size:12px}
+  tbody tr.msg{display:flex;gap:8px;align-items:baseline}
+  tbody tr.msg td{white-space:nowrap}
+  tbody tr.msg td[colspan]{margin-left:auto}
+  .pager{padding:14px;gap:14px}
+  .pager .btn{padding:11px 20px}
+
+  /* podrobnosti čez cel zaslon */
+  .overlay{padding:0;align-items:stretch}
+  .modal{width:100%;max-height:100vh;height:100vh;border:0;border-radius:0}
+  .modal-head{padding:14px;position:sticky;top:0;background:var(--panel);z-index:3}
+  .modal-head h2{font-size:19px;max-width:60vw}
+  .price-big .p{font-size:24px}
+  .close{position:absolute;right:12px;top:12px;width:38px;height:38px;font-size:20px}
+  .ranges{padding:10px 14px 0;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  .ranges::-webkit-scrollbar{display:none}
+  .range{padding:9px 14px;font-size:12px;flex:0 0 auto}
+  .chart-box{padding:10px 10px 0}
+  canvas#chart{height:min(46vh,300px)}
+  .stats{grid-template-columns:1fr 1fr}
+  footer{padding:16px 14px 40px}
 }
 </style>
 </head>
@@ -385,7 +443,7 @@ function setStatus(t){ document.getElementById('statusText').textContent = t; }
    3. TABELA
    ======================================================================= */
 
-let current = 'global', page = 0, perPage = 50;
+let current = 'global', page = 0, perPage = window.innerWidth < 760 ? 25 : 50;
 let sortKey = 'pct', sortDir = -1;
 const rowsEl = document.getElementById('rows');
 const qEl = document.getElementById('q');
@@ -431,15 +489,15 @@ function render(){
   const slice = syms.slice(page*perPage, page*perPage+perPage);
   rowsEl.innerHTML = slice.map(s => {
     const d = cache.get(s);
-    if(!d) return `<tr data-s="${s}"><td class="tk">${s}</td><td class="nm">${NAMES[s]||''}</td>
-      <td class="hide-s"></td><td colspan="4" style="color:var(--dim)">nalagam</td></tr>`;
-    if(d.error) return `<tr data-s="${s}"><td class="tk">${s}</td><td class="nm">${d.name}</td>
-      <td class="hide-s"></td><td colspan="4" style="color:var(--dim)">ni podatka</td></tr>`;
+    if(!d) return `<tr class="msg" data-s="${s}"><td class="tk">${s}</td><td class="nm">${NAMES[s]||''}</td>
+      <td class="sp"></td><td colspan="4" style="color:var(--dim)">nalagam</td></tr>`;
+    if(d.error) return `<tr class="msg" data-s="${s}"><td class="tk">${s}</td><td class="nm">${d.name}</td>
+      <td class="sp"></td><td colspan="4" style="color:var(--dim)">ni podatka</td></tr>`;
     const up = d.pct >= 0, cls = up ? 'up' : 'down';
     return `<tr data-s="${s}">
       <td class="tk">${s}</td>
       <td><span class="nm">${d.name}</span></td>
-      <td class="hide-s">${sparkSVG(d.spark, up)}</td>
+      <td class="sp">${sparkSVG(d.spark, up)}</td>
       <td>${fmt(d.price, d.price<10?4:2)}</td>
       <td class="${cls}">${up?'+':''}${fmt(d.chg, Math.abs(d.chg)<1?4:2)}</td>
       <td><span class="pill ${cls}">${up?'+':''}${fmt(d.pct)} %</span></td>
@@ -468,13 +526,13 @@ function paintOnly(){
   });
 }
 function rowHTML(s, d){
-  if(d.error) return `<tr data-s="${s}" data-done="${d.ts}"><td class="tk">${s}</td>
-    <td class="nm">${d.name}</td><td class="hide-s"></td>
+  if(d.error) return `<tr class="msg" data-s="${s}" data-done="${d.ts}"><td class="tk">${s}</td>
+    <td class="nm">${d.name}</td><td class="sp"></td>
     <td colspan="4" style="color:var(--dim)">ni podatka</td></tr>`;
   const up = d.pct >= 0, cls = up ? 'up' : 'down';
   return `<tr data-s="${s}" data-done="${d.ts}">
     <td class="tk">${s}</td><td><span class="nm">${d.name}</span></td>
-    <td class="hide-s">${sparkSVG(d.spark, up)}</td>
+    <td class="sp">${sparkSVG(d.spark, up)}</td>
     <td>${fmt(d.price, d.price<10?4:2)}</td>
     <td class="${cls}">${up?'+':''}${fmt(d.chg, Math.abs(d.chg)<1?4:2)}</td>
     <td><span class="pill ${cls}">${up?'+':''}${fmt(d.pct)} %</span></td>
@@ -597,7 +655,7 @@ async function loadSeries(){
 
 function drawChart(msg){
   const dpr = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth, h = 320;
+  const w = canvas.clientWidth, h = canvas.clientHeight || 320;
   canvas.width = w*dpr; canvas.height = h*dpr;
   const c = canvas.getContext('2d');
   c.setTransform(dpr,0,0,dpr,0,0);
@@ -651,10 +709,10 @@ function drawChart(msg){
   canvas._map = {X, Y, pad, w, h};
 }
 
-canvas.addEventListener('mousemove', e => {
+function showCross(clientX){
   if(!series || !canvas._map) return;
   const r = canvas.getBoundingClientRect();
-  const x = e.clientX - r.left;
+  const x = clientX - r.left;
   const {pad, w} = canvas._map;
   const frac = (x - pad.l) / (w - pad.l - pad.r);
   const i = Math.max(0, Math.min(series.length-1, Math.round(frac*(series.length-1))));
@@ -665,9 +723,14 @@ canvas.addEventListener('mousemove', e => {
   cross.style.top = '24px';
   cross.innerHTML = `<b>${p.v.toLocaleString('sl-SI',{maximumFractionDigits:4})}</b><br>
     <span style="color:var(--dim)">${dt.toLocaleString('sl-SI')}</span>`;
-});
+}
+canvas.addEventListener('mousemove', e => showCross(e.clientX));
 canvas.addEventListener('mouseleave', () => cross.style.display = 'none');
+canvas.addEventListener('touchstart', e => showCross(e.touches[0].clientX), {passive:true});
+canvas.addEventListener('touchmove', e => showCross(e.touches[0].clientX), {passive:true});
+canvas.addEventListener('touchend', () => setTimeout(() => cross.style.display = 'none', 1800));
 window.addEventListener('resize', () => { if(openSym) drawChart(); });
+window.addEventListener('orientationchange', () => setTimeout(() => { if(openSym) drawChart(); }, 250));
 
 /* =======================================================================
    5. TRAK
