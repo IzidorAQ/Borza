@@ -50,10 +50,19 @@ input[type=search]{min-width:150px}
 /* ---------- kartica ---------- */
 #cards{padding:2px 0}
 .card{
+  position:relative;
   display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:center;
-  padding:12px 18px;border-bottom:1px solid #1c2430;cursor:pointer;
+  padding:12px 40px 12px 18px;border-bottom:1px solid #1c2430;cursor:pointer;
 }
 .card:hover{background:var(--panel-2)}
+.star{
+  position:absolute;top:10px;right:10px;background:none;border:0;cursor:pointer;
+  font-size:19px;line-height:1;color:var(--line);padding:4px;
+}
+.star:hover{color:var(--amber)}
+.star.on{color:var(--amber)}
+.empty-fav{padding:40px 20px;text-align:center;color:var(--dim);line-height:1.8}
+.empty-fav b{color:var(--text)}
 .ident .nm{font-family:'Archivo';font-size:15px;font-weight:700;line-height:1.2}
 .ident .co{color:var(--dim);font-size:10.5px;margin-top:3px;letter-spacing:.04em;text-transform:uppercase}
 .ident .cap{color:var(--amber);opacity:.85}
@@ -112,7 +121,7 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
   .toolbar .tabs{order:-1;width:100%}
   #q{flex:1 1 130px;min-width:0}
   .status{width:100%;margin:0;text-align:left}
-  .card{grid-template-columns:1fr;gap:9px;padding:13px 14px}
+  .card{grid-template-columns:1fr;gap:9px;padding:13px 40px 13px 14px}
   .quotes{gap:7px}
   .q{border-left-width:3px;padding-left:7px}
   .q .venue{font-size:8.5px;letter-spacing:.05em;display:block;line-height:1.5}
@@ -146,7 +155,8 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
 
 <div class="toolbar">
   <div class="tabs" role="tablist">
-    <button class="tab" role="tab" data-list="top500" aria-selected="true">Največjih 500</button>
+    <button class="tab" role="tab" data-list="favorites" aria-selected="true">★ Priljubljene</button>
+    <button class="tab" role="tab" data-list="top500">Največjih 500</button>
     <button class="tab" role="tab" data-list="vse">Vsa podjetja</button>
     <button class="tab" role="tab" data-list="dvojne">Dvojne kotacije</button>
     <button class="tab" role="tab" data-list="evropa">Evropa</button>
@@ -988,13 +998,14 @@ const INDEKSI = [
   ['EURJPY=X','EUR / JPY'],['DX-Y.NYB','Indeks dolarja'],['^TNX','ZDA 10-letne obveznice']
 ];
 function simple(list, tag){
-  return list.map(([sym,name]) => ({name, country:tag, region:tag,
+  return list.map(([sym,name]) => ({name, country:tag, region:tag, key: tag + ':' + name,
     listings:[{slot: sym.endsWith('.LJ') ? 'eu' : 'dom', sym,
       reg:tag, city:venueName(sym), venue: tag + ' · ' + venueName(sym)}]}));
 }
 /* Za kapitalizacijo uporabimo matično kotacijo, ne potrdila ADR:
    evropsko podjetje se meri po evropski borzi, azijsko po domači. */
 COMPANIES.forEach(c => {
+  c.key = c.name;
   const by = slot => c.listings.find(l => l.slot === slot);
   c.rankListing = (c.region === 'evropa' ? (by('eu') || by('dom') || by('zda'))
                  : c.region === 'severna' ? (by('zda') || by('dom') || by('eu'))
@@ -1012,6 +1023,24 @@ const GROUPS = {
   slo: simple(SLO,'Slovenija'),
   indeksi: simple(INDEKSI,'Indeks')
 };
+
+const ALL_ITEMS = COMPANIES.concat(GROUPS.surovine, GROUPS.slo, GROUPS.indeksi);
+const ITEM_BY_KEY = new Map(ALL_ITEMS.map(it => [it.key, it]));
+
+/* Priljubljene se shranijo v brskalnik in preživijo osvežitev strani. */
+const FAVORITES = new Set();
+function favLoad(){
+  if(!LS) return;
+  try{ (JSON.parse(LS.getItem('bt_favs_v1') || '[]')).forEach(k => FAVORITES.add(k)); }catch(e){}
+}
+function favSave(){
+  if(!LS) return;
+  try{ LS.setItem('bt_favs_v1', JSON.stringify([...FAVORITES])); }catch(e){}
+}
+function toggleFav(key){
+  FAVORITES.has(key) ? FAVORITES.delete(key) : FAVORITES.add(key);
+  favSave();
+}
 
 /* =====================================================================
    2. PRENOS
@@ -1462,7 +1491,7 @@ function setStatus(t){ document.getElementById('statusText').textContent = t; }
 /* =====================================================================
    3. IZRIS KARTIC
    ===================================================================== */
-let group = 'top500', page = 0;
+let group = 'favorites', page = 0;
 let perPage = window.innerWidth < 820 ? 12 : 25;
 const cardsEl = document.getElementById('cards');
 const qEl = document.getElementById('q');
@@ -1481,6 +1510,9 @@ function capRanked(){
   return withCap;
 }
 function groupList(){
+  if(group === 'favorites'){
+    return ALL_ITEMS.filter(it => FAVORITES.has(it.key));
+  }
   if(group === 'top500'){
     const ranked = capRanked();
     if(ranked.length >= 500) return ranked.slice(0,500);
@@ -1575,12 +1607,24 @@ function capLabel(c){
 
 function render(){
   const arr = filtered();
+  if(group === 'favorites' && !arr.length){
+    cardsEl.innerHTML = `<div class="empty-fav">Tu še ni ničesar.<br>
+      Klikni zvezdico <span style="color:var(--amber)">☆</span> na poljubni kartici v drugih zavihkih,
+      da jo dodaš med <b>priljubljene</b>.</div>`;
+    cardsEl._slice = [];
+    document.getElementById('count').textContent = '0 priljubljenih';
+    document.getElementById('pageInfo').textContent = '';
+    return;
+  }
   const pages = Math.max(1, Math.ceil(arr.length/perPage));
   if(page >= pages) page = pages-1;
   if(page < 0) page = 0;
   const slice = arr.slice(page*perPage, page*perPage+perPage);
   cardsEl.innerHTML = slice.map((c,i) => `
     <div class="card" data-i="${page*perPage+i}">
+      <button class="star ${FAVORITES.has(c.key)?'on':''}" data-key="${c.key}"
+        aria-pressed="${FAVORITES.has(c.key)}" aria-label="Priljubljene" title="Dodaj med priljubljene">
+        ${FAVORITES.has(c.key) ? '★' : '☆'}</button>
       <div class="ident">
         <div class="nm">${c.name}</div>
         <div class="co">${c.country}${capLabel(c)}</div>
@@ -1610,9 +1654,11 @@ function repaint(){
   requestAnimationFrame(() => {
     pending = false;
     const slice = cardsEl._slice || [];
+    if(!slice.length) return;
     [...cardsEl.children].forEach((el,i) => {
       const c = slice[i]; if(!c) return;
-      el.querySelector('.quotes').innerHTML = c.listings.map(quoteHTML).join('');
+      const q = el.querySelector('.quotes'); if(!q) return;
+      q.innerHTML = c.listings.map(quoteHTML).join('');
     });
   });
 }
@@ -1740,6 +1786,18 @@ document.getElementById('venues').onclick = e => {
   drawStats(); loadSeries();
 };
 cardsEl.addEventListener('click', e => {
+  const star = e.target.closest('.star');
+  if(star){
+    e.stopPropagation();
+    const key = star.dataset.key;
+    toggleFav(key);
+    const nowOn = FAVORITES.has(key);
+    star.classList.toggle('on', nowOn);
+    star.setAttribute('aria-pressed', String(nowOn));
+    star.textContent = nowOn ? '★' : '☆';
+    if(group === 'favorites' && !nowOn) render();   // odstranjeno iz seznama priljubljenih
+    return;
+  }
   const card = e.target.closest('.card'); if(!card) return;
   const c = (cardsEl._slice || [])[[...cardsEl.children].indexOf(card)];
   if(c) openDetail(c);
@@ -1923,6 +1981,7 @@ async function buildTape(){
   }).join('');
   document.getElementById('tape').innerHTML = html + html;
 }
+favLoad();
 const cached = capsLoad();
 if(cached){ capState = 'ok'; setStatus(`${cached} kapitalizacij iz shrambe`); }
 render();
