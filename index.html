@@ -157,10 +157,13 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
   <select id="proxy">
     <option value="0">corsproxy.io</option>
     <option value="1">allorigins</option>
-    <option value="2">brez posrednika</option>
+    <option value="2">codetabs</option>
+    <option value="3">cors.sh</option>
+    <option value="4">brez posrednika</option>
   </select>
   <button class="btn" id="refresh">Osveži</button>
   <button class="btn" id="auto">Auto 60s</button>
+  <button class="btn" id="diag">Diagnostika</button>
   <div class="status"><span class="dot" id="dot"></span><span id="statusText">pripravljen</span></div>
 </div>
 
@@ -1002,6 +1005,8 @@ const GROUPS = {
 const PROXIES = [
   u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
   u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+  u => 'https://proxy.cors.sh/' + u,
   u => u
 ];
 let proxyIdx = 0, netOk = 0, netFail = 0;
@@ -1034,171 +1039,173 @@ function toEur(value, cur){
   return r ? value / r : null;
 }
 
-/* Paketni prenos tržne kapitalizacije. Vrednosti niso vpisane v stran,
-   ampak se ob vsakem zagonu preberejo pri viru. */
+/* --------------------------------------------------------------------
+   Tržna kapitalizacija: Yahoo je zaprl paketni vmesnik v7/quote za
+   nepodpisane zahtevke, zato preizkusimo več virov po vrsti in
+   uporabimo prvega, ki dejansko vrne številke.
+   -------------------------------------------------------------------- */
+const CUR_BY_SUFFIX = [
+  ['.T','JPY'],['.HK','HKD'],['.SS','CNY'],['.SZ','CNY'],['.KS','KRW'],['.TW','TWD'],
+  ['.NS','INR'],['.TO','CAD'],['.AX','AUD'],['.SA','BRL'],['.MX','MXN'],['.SR','SAR'],
+  ['.TA','ILS'],['.SI','SGD'],['.L','GBP'],['.SW','CHF'],['.ST','SEK'],['.CO','DKK'],
+  ['.OL','NOK'],['.WA','PLN'],['.PR','CZK'],['.BD','HUF'],['.DE','EUR'],['.PA','EUR'],
+  ['.AS','EUR'],['.MI','EUR'],['.MC','EUR'],['.BR','EUR'],['.VI','EUR'],['.HE','EUR'],
+  ['.LS','EUR'],['.LJ','EUR']
+];
+function currencyOf(sym){
+  const q = cache.get(sym);
+  if(q && !q.error && q.cur) return q.cur === 'GBp' ? 'GBP' : q.cur;
+  for(const [suf,cur] of CUR_BY_SUFFIX) if(sym.endsWith(suf)) return cur;
+  return 'USD';
+}
+async function getJSON(url){
+  const r = await fetch(PROXIES[proxyIdx](url), {cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+/* poišče najnovejšo vrednost reportedValue.raw kjerkoli v odgovoru */
+function deepCap(obj){
+  let best = null, bestDate = '';
+  (function walk(o){
+    if(!o || typeof o !== 'object') return;
+    if(o.reportedValue && typeof o.reportedValue.raw === 'number'){
+      const d = o.asOfDate || '';
+      if(d >= bestDate){ bestDate = d; best = o.reportedValue.raw; }
+    }
+    for(const k in o) walk(o[k]);
+  })(obj);
+  return best;
+}
+
+const CAP_SOURCES = [
+  {
+    id:'v7', name:'v7/finance/quote (paketno)', batch:40,
+    async run(syms){
+      const j = await getJSON('https://query1.finance.yahoo.com/v7/finance/quote?symbols='
+                + encodeURIComponent(syms.join(',')));
+      const out = new Map();
+      (j?.quoteResponse?.result || []).forEach(q => {
+        if(typeof q.marketCap === 'number') out.set(q.symbol, {cap:q.marketCap, cur:q.currency});
+      });
+      return out;
+    }
+  },
+  {
+    id:'fund', name:'fundamentals-timeseries', batch:1,
+    async run(syms){
+      const sym = syms[0];
+      const p2 = Math.floor(Date.now()/1000), p1 = p2 - 400*86400;
+      const j = await getJSON('https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/'
+        + encodeURIComponent(sym) + '?symbol=' + encodeURIComponent(sym)
+        + '&type=trailingMarketCap,quarterlyMarketCap,annualMarketCap&period1=' + p1 + '&period2=' + p2);
+      const cap = deepCap(j?.timeseries);
+      const out = new Map();
+      if(cap) out.set(sym, {cap, cur: currencyOf(sym)});
+      return out;
+    }
+  },
+  {
+    id:'qs', name:'v10/quoteSummary', batch:1,
+    async run(syms){
+      const sym = syms[0];
+      const j = await getJSON('https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+        + encodeURIComponent(sym) + '?modules=price');
+      const pr = j?.quoteSummary?.result?.[0]?.price;
+      const out = new Map();
+      if(pr?.marketCap?.raw) out.set(sym, {cap:pr.marketCap.raw, cur:pr.currency || currencyOf(sym)});
+      return out;
+    }
+  }
+];
+let capSource = null;
+
+async function pickCapSource(sample){
+  for(const src of CAP_SOURCES){
+    try{
+      const probe = src.batch > 1 ? sample.slice(0, src.batch) : [sample[0]];
+      const res = await src.run(probe);
+      if(res.size){ capSource = src; return src; }
+    }catch(e){ /* naslednji vir */ }
+  }
+  return null;
+}
+
 async function loadCaps(){
-  const jobs = COMPANIES.map(c => c.rankListing).filter(Boolean);
   const bySym = new Map();
   COMPANIES.forEach(c => { if(c.rankListing) bySym.set(c.rankListing.sym, c); });
   const syms = [...bySym.keys()];
-  const CH = 40;
-  let got = 0;
-  setStatus('berem kapitalizacije');
-  for(let i=0;i<syms.length;i+=CH){
-    const batch = syms.slice(i, i+CH);
-    const url = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' +
-                encodeURIComponent(batch.join(','));
-    try{
-      const r = await fetch(PROXIES[proxyIdx](url), {cache:'no-store'});
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      const j = await r.json();
-      const list = j?.quoteResponse?.result || [];
-      if(!list.length) throw new Error('prazno');
-      list.forEach(q => {
-        const c = bySym.get(q.symbol);
-        if(!c) return;
-        const eur = toEur(q.marketCap, q.currency);
-        if(eur){ capEur.set(c.name, eur); got++; }
-      });
-    }catch(e){ /* paket preskočimo, ostali se še naprej berejo */ }
-    setStatus(`kapitalizacije ${Math.min(i+CH, syms.length)}/${syms.length}`);
-  }
-  capState = got > 50 ? 'ok' : 'fail';
-  if(capState === 'fail'){
-    if(sortEl.value === 'cap') sortEl.value = 'az';
-    const n = document.getElementById('notice');
-    n.className = 'notice show';
-    n.textContent = 'Tržnih kapitalizacij ni bilo mogoče prebrati, zato je razvrstitev abecedna in zavihek Največjih 500 prikazuje celotno bazo. Vir za kapitalizacije je strožje omejen kot vir za tečaje. Poskusi drug posrednik in pritisni Osveži.';
-  }
+  const sample = ['AAPL','MSFT','NESN.SW','7203.T'].filter(x => bySym.has(x)).concat(syms.slice(0,4));
+
+  capState = 'pending';
+  setStatus('iščem vir za kapitalizacije');
+  const src = await pickCapSource(sample);
+  if(!src){ capFailed(); return; }
+
+  setStatus('kapitalizacije prek ' + src.name);
+  const queue = [];
+  for(let i=0;i<syms.length;i+=src.batch) queue.push(syms.slice(i, i+src.batch));
+
+  let done = 0, hits = 0;
+  const workers = Array.from({length: src.batch > 1 ? 2 : 5}, async () => {
+    while(queue.length){
+      const chunk = queue.shift();
+      try{
+        const res = await src.run(chunk);
+        res.forEach((val, sym) => {
+          const c = bySym.get(sym);
+          const eur = toEur(val.cap, val.cur);
+          if(c && eur){ capEur.set(c.name, eur); hits++; }
+        });
+      }catch(e){}
+      done += chunk.length;
+      if(done % 25 < chunk.length){
+        setStatus(`kapitalizacije ${done}/${syms.length}`);
+        capState = hits > 20 ? 'ok' : 'pending';
+        render();
+      }
+    }
+  });
+  await Promise.all(workers);
+  capState = hits > 20 ? 'ok' : 'fail';
+  if(capState === 'fail') capFailed(); else { render(); health(); }
+}
+
+function capFailed(){
+  capState = 'fail';
+  if(sortEl.value === 'cap') sortEl.value = 'az';
+  const n = document.getElementById('notice');
+  n.className = 'notice show';
+  n.innerHTML = 'Tržnih kapitalizacij ni bilo mogoče prebrati z nobenega od treh Yahoo vmesnikov, '
+    + 'zato je razvrstitev abecedna in zavihek Največjih 500 prikazuje celotno bazo. '
+    + 'Tečaji delujejo prek drugega vmesnika in so še vedno pravi. '
+    + 'Poskusi drug posrednik v spustnem meniju, nato pritisni Osveži. '
+    + '<button class="btn" id="diagBtn" style="margin-top:8px">Zaženi diagnostiko</button>'
+    + '<pre id="diagOut" style="white-space:pre-wrap;margin:8px 0 0;color:var(--dim);font-size:11px"></pre>';
+  document.getElementById('diagBtn').onclick = runDiag;
   render();
 }
 
-function yUrl(sym, range, interval, prepost){
-  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}`
-       + `?range=${range}&interval=${interval}${prepost ? '&includePrePost=true' : ''}`;
-}
-async function getChart(sym, range='1d', interval='5m', prepost=false){
-  const r = await fetch(PROXIES[proxyIdx](yUrl(sym,range,interval,prepost)), {cache:'no-store'});
-  if(!r.ok) throw new Error('HTTP ' + r.status);
-  const j = await r.json();
-  const res = j?.chart?.result?.[0];
-  if(!res) throw new Error('brez rezultata');
-  return res;
-}
-
-function parseQuote(sym, res, expectName){
-  const m = res.meta || {}, ts = res.timestamp || [];
-  const cl = res.indicators?.quote?.[0]?.close || [];
-  const pts = [];
-  for(let i=0;i<ts.length;i++) if(cl[i]!=null) pts.push({t:ts[i], v:cl[i]});
-
-  const per = m.currentTradingPeriod || {};
-  const rs = per.regular?.start, re = per.regular?.end;
-  const now = Math.floor(Date.now()/1000);
-  let regPts = pts, prePts = [], postPts = [];
-  if(rs && re){
-    regPts  = pts.filter(p => p.t >= rs && p.t <= re);
-    prePts  = pts.filter(p => p.t <  rs);
-    postPts = pts.filter(p => p.t >  re);
-  }
-  const prev  = m.chartPreviousClose ?? m.previousClose;
-  const price = regPts.length ? regPts[regPts.length-1].v : (m.regularMarketPrice ?? prev);
-
-  let state = 'closed';
-  if(rs && re){
-    if(now >= rs && now <= re) state = 'open';
-    else if(per.pre  && now >= per.pre.start && now <  rs) state = 'pre';
-    else if(per.post && now >  re && now <= per.post.end)  state = 'post';
-  }
-  let ext = null;
-  if(prePts.length  && state === 'pre')
-    ext = {kind:'pre',  price: prePts[prePts.length-1].v,  base: prev};
-  if(postPts.length && (state === 'post' || state === 'closed'))
-    ext = {kind:'post', price: postPts[postPts.length-1].v, base: price};
-  if(ext){
-    ext.chg = ext.price - ext.base;
-    ext.pct = ext.base ? ext.chg / ext.base * 100 : 0;
-  }
-
-  const srcName = m.longName || m.shortName || '';
-  return {
-    sym, price, prev, state, ext, srcName,
-    chg: price - prev,
-    pct: prev ? (price - prev) / prev * 100 : 0,
-    cur: m.currency || '',
-    exch: m.fullExchangeName || m.exchangeName || '',
-    high: m.regularMarketDayHigh, low: m.regularMarketDayLow,
-    vol: m.regularMarketVolume,
-    wk52h: m.fiftyTwoWeekHigh, wk52l: m.fiftyTwoWeekLow,
-    tz: m.exchangeTimezoneName || '',
-    mismatch: nameMismatch(expectName, srcName),
-    spark: (regPts.length ? regPts : pts).slice(-40).map(p => p.v),
-    ts: Date.now()
-  };
-}
-
-/* Opozori, kadar vir vrne papir, ki po imenu ne ustreza pričakovanemu podjetju. */
-function nameMismatch(expect, got){
-  if(!expect || !got) return false;
-  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-                    .replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w => w.length > 2 &&
-                    !['the','inc','plc','ltd','sa','ag','nv','co','corp','group','holdings',
-                      'company','class','ord','adr','shs','common','stock','share','shares','de'].includes(w));
-  const a = norm(expect), b = norm(got);
-  if(!a.length || !b.length) return false;
-  return !a.some(w => b.some(x => x.startsWith(w.slice(0,4)) || w.startsWith(x.slice(0,4))));
-}
-
-async function loadQuotes(jobs, onEach){
-  const queue = jobs.filter(j => !cache.has(j.sym) || Date.now()-cache.get(j.sym).ts > 55000);
-  if(!queue.length){ onEach(); return; }
-  let done = 0;
-  const total = queue.length;
-  await Promise.all(Array.from({length:6}, async () => {
-    while(queue.length){
-      const j = queue.shift();
-      try{
-        cache.set(j.sym, parseQuote(j.sym, await getChart(j.sym,'1d','5m',true), j.name));
-        netOk++;
-      }catch(e){
-        cache.set(j.sym, {sym:j.sym, error:true, ts:Date.now()});
-        netFail++;
-      }
-      done++; onEach();
-      setStatus(`nalagam ${done}/${total}`);
+/* Preizkusi vsak vmesnik posebej in izpiše, kaj se dejansko zgodi. */
+async function runDiag(){
+  const out = document.getElementById('diagOut');
+  const tests = [
+    ['tečaji  v8/chart', 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=5m'],
+    ['kapit.  v7/quote', 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=AAPL'],
+    ['kapit.  fundamentals', 'https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/AAPL?symbol=AAPL&type=trailingMarketCap&period1=' + (Math.floor(Date.now()/1000)-400*86400) + '&period2=' + Math.floor(Date.now()/1000)],
+    ['kapit.  v10/quoteSummary', 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/AAPL?modules=price']
+  ];
+  out.textContent = 'posrednik: ' + document.getElementById('proxy').selectedOptions[0].text + '\n';
+  for(const [label, url] of tests){
+    try{
+      const r = await fetch(PROXIES[proxyIdx](url), {cache:'no-store'});
+      const t = (await r.text()).slice(0,120).replace(/\s+/g,' ');
+      out.textContent += `${label}: HTTP ${r.status} · ${t}\n`;
+    }catch(e){
+      out.textContent += `${label}: napaka · ${e.message}\n`;
     }
-  }));
-  health();
-}
-function health(){
-  const n = document.getElementById('notice');
-  if(netOk === 0 && netFail > 0){
-    dot.className = 'dot err'; setStatus('vir ni dosegljiv');
-    n.className = 'notice show';
-    n.textContent = 'Tečajev ni bilo mogoče prenesti, zato so polja prazna. Nobena vrednost ni izmišljena. Poskusi drug posrednik in pritisni Osveži. Zahtevke lahko blokira tudi blokator oglasov, VPN ali omejitev pri posredniku.';
-  }else{
-    dot.className = 'dot live';
-    setStatus('posodobljeno ' + new Date().toLocaleTimeString('sl-SI'));
-    n.className = 'notice';
   }
+  out.textContent += 'Če vsi vrnejo 401 ali Invalid Crumb, vir zahteva prijavo in kapitalizacij od tam ni mogoče dobiti.';
 }
-const dot = document.getElementById('dot');
-function setStatus(t){ document.getElementById('statusText').textContent = t; }
-
-/* =====================================================================
-   3. IZRIS KARTIC
-   ===================================================================== */
-let group = 'vse', page = 0;
-let perPage = window.innerWidth < 820 ? 12 : 25;
-const cardsEl = document.getElementById('cards');
-const qEl = document.getElementById('q');
-const sortEl = document.getElementById('sort');
-
-function fmt(v, d=2){
-  if(v == null || isNaN(v)) return '-';
-  return v.toLocaleString('sl-SI',{minimumFractionDigits:d, maximumFractionDigits:d});
-}
-function primary(c){ return cache.get(c.listings[0].sym); }
 
 function capRanked(){
   const withCap = COMPANIES.filter(c => capEur.has(c.name));
@@ -1311,7 +1318,7 @@ function render(){
   cardsEl._slice = slice;
   document.getElementById('count').textContent =
     `${arr.length} podjetij v izboru · ${GROUPS.vse.length} v bazi · ${GROUPS.dvojne.length} z več kotacijami · " +
-    "kapitalizacija: ${capState === 'ok' ? capEur.size + ' prebranih' : capState === 'fail' ? 'ni na voljo' : 'berem'}`;
+    "kapitalizacija: ${capState === 'ok' ? capEur.size + ' prebranih prek ' + (capSource ? capSource.id : '?') : capState === 'fail' ? 'ni na voljo' : 'berem'}`;
   document.getElementById('pageInfo').textContent =
     `${arr.length ? page*perPage+1 : 0}–${Math.min(arr.length,(page+1)*perPage)} od ${arr.length}`;
 
@@ -1354,6 +1361,13 @@ document.getElementById('refresh').onclick = async () => {
   render(); buildTape();
   if(!FX.USD) await loadFx();
   loadCaps();
+};
+document.getElementById('diag').onclick = () => {
+  const n = document.getElementById('notice');
+  n.className = 'notice show';
+  n.innerHTML = 'Preizkus vmesnikov s trenutnim posrednikom.'
+    + '<pre id="diagOut" style="white-space:pre-wrap;margin:8px 0 0;color:var(--dim);font-size:11px">tečem ...</pre>';
+  runDiag();
 };
 let timer = null;
 document.getElementById('auto').onclick = e => {
