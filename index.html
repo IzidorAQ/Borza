@@ -1207,6 +1207,138 @@ async function runDiag(){
   out.textContent += 'Če vsi vrnejo 401 ali Invalid Crumb, vir zahteva prijavo in kapitalizacij od tam ni mogoče dobiti.';
 }
 
+/* =====================================================================
+   2b. PRENOS TEČAJEV
+   ===================================================================== */
+function yUrl(sym, range, interval, prepost){
+  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}`
+       + `?range=${range}&interval=${interval}${prepost ? '&includePrePost=true' : ''}`;
+}
+async function getChart(sym, range='1d', interval='5m', prepost=false){
+  const r = await fetch(PROXIES[proxyIdx](yUrl(sym,range,interval,prepost)), {cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  const res = j?.chart?.result?.[0];
+  if(!res) throw new Error('brez rezultata');
+  return res;
+}
+
+function parseQuote(sym, res, expectName){
+  const m = res.meta || {}, ts = res.timestamp || [];
+  const cl = res.indicators?.quote?.[0]?.close || [];
+  const pts = [];
+  for(let i=0;i<ts.length;i++) if(cl[i]!=null) pts.push({t:ts[i], v:cl[i]});
+
+  const per = m.currentTradingPeriod || {};
+  const rs = per.regular?.start, re = per.regular?.end;
+  const now = Math.floor(Date.now()/1000);
+  let regPts = pts, prePts = [], postPts = [];
+  if(rs && re){
+    regPts  = pts.filter(p => p.t >= rs && p.t <= re);
+    prePts  = pts.filter(p => p.t <  rs);
+    postPts = pts.filter(p => p.t >  re);
+  }
+  const prev  = m.chartPreviousClose ?? m.previousClose;
+  const price = regPts.length ? regPts[regPts.length-1].v : (m.regularMarketPrice ?? prev);
+
+  let state = 'closed';
+  if(rs && re){
+    if(now >= rs && now <= re) state = 'open';
+    else if(per.pre  && now >= per.pre.start && now <  rs) state = 'pre';
+    else if(per.post && now >  re && now <= per.post.end)  state = 'post';
+  }
+  let ext = null;
+  if(prePts.length  && state === 'pre')
+    ext = {kind:'pre',  price: prePts[prePts.length-1].v,  base: prev};
+  if(postPts.length && (state === 'post' || state === 'closed'))
+    ext = {kind:'post', price: postPts[postPts.length-1].v, base: price};
+  if(ext){
+    ext.chg = ext.price - ext.base;
+    ext.pct = ext.base ? ext.chg / ext.base * 100 : 0;
+  }
+
+  const srcName = m.longName || m.shortName || '';
+  return {
+    sym, price, prev, state, ext, srcName,
+    chg: price - prev,
+    pct: prev ? (price - prev) / prev * 100 : 0,
+    cur: m.currency || '',
+    exch: m.fullExchangeName || m.exchangeName || '',
+    high: m.regularMarketDayHigh, low: m.regularMarketDayLow,
+    vol: m.regularMarketVolume,
+    wk52h: m.fiftyTwoWeekHigh, wk52l: m.fiftyTwoWeekLow,
+    tz: m.exchangeTimezoneName || '',
+    mismatch: nameMismatch(expectName, srcName),
+    spark: (regPts.length ? regPts : pts).slice(-40).map(p => p.v),
+    ts: Date.now()
+  };
+}
+
+/* Opozori, kadar vir vrne papir, ki po imenu ne ustreza pričakovanemu podjetju. */
+function nameMismatch(expect, got){
+  if(!expect || !got) return false;
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w => w.length > 2 &&
+    !['the','inc','plc','ltd','sa','ag','nv','co','corp','group','holdings','company',
+      'class','ord','adr','shs','common','stock','share','shares','de'].includes(w));
+  const a = norm(expect), b = norm(got);
+  if(!a.length || !b.length) return false;
+  return !a.some(w => b.some(x => x.startsWith(w.slice(0,4)) || w.startsWith(x.slice(0,4))));
+}
+
+async function loadQuotes(jobs, onEach){
+  const queue = jobs.filter(j => !cache.has(j.sym) || Date.now()-cache.get(j.sym).ts > 55000);
+  if(!queue.length){ onEach(); return; }
+  const total = queue.length;
+  let done = 0;
+  await Promise.all(Array.from({length:6}, async () => {
+    while(queue.length){
+      const j = queue.shift();
+      try{
+        cache.set(j.sym, parseQuote(j.sym, await getChart(j.sym,'1d','5m',true), j.name));
+        netOk++;
+      }catch(e){
+        cache.set(j.sym, {sym:j.sym, error:true, ts:Date.now()});
+        netFail++;
+      }
+      done++; onEach();
+      setStatus(`nalagam ${done}/${total}`);
+    }
+  }));
+  health();
+}
+
+function health(){
+  const n = document.getElementById('notice');
+  if(netOk === 0 && netFail > 0){
+    dot.className = 'dot err'; setStatus('vir ni dosegljiv');
+    n.className = 'notice show';
+    n.textContent = 'Tečajev ni bilo mogoče prenesti, zato so polja prazna. Nobena vrednost ni izmišljena. '
+      + 'Poskusi drug posrednik in pritisni Osveži. Pomaga tudi gumb Diagnostika.';
+  }else if(capState !== 'fail'){
+    dot.className = 'dot live';
+    setStatus('posodobljeno ' + new Date().toLocaleTimeString('sl-SI'));
+    n.className = 'notice';
+  }
+}
+const dot = document.getElementById('dot');
+function setStatus(t){ document.getElementById('statusText').textContent = t; }
+
+/* =====================================================================
+   3. IZRIS KARTIC
+   ===================================================================== */
+let group = 'top500', page = 0;
+let perPage = window.innerWidth < 820 ? 12 : 25;
+const cardsEl = document.getElementById('cards');
+const qEl = document.getElementById('q');
+const sortEl = document.getElementById('sort');
+
+function fmt(v, d=2){
+  if(v == null || isNaN(v)) return '-';
+  return v.toLocaleString('sl-SI',{minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function primary(c){ return cache.get(c.listings[0].sym); }
+
 function capRanked(){
   const withCap = COMPANIES.filter(c => capEur.has(c.name));
   withCap.sort((a,b) => capEur.get(b.name) - capEur.get(a.name));
@@ -1317,8 +1449,10 @@ function render(){
     </div>`).join('');
   cardsEl._slice = slice;
   document.getElementById('count').textContent =
-    `${arr.length} podjetij v izboru · ${GROUPS.vse.length} v bazi · ${GROUPS.dvojne.length} z več kotacijami · " +
-    "kapitalizacija: ${capState === 'ok' ? capEur.size + ' prebranih prek ' + (capSource ? capSource.id : '?') : capState === 'fail' ? 'ni na voljo' : 'berem'}`;
+    `${arr.length} podjetij v izboru · ${GROUPS.vse.length} v bazi · `
+    + `${GROUPS.dvojne.length} z več kotacijami · kapitalizacija: `
+    + (capState === 'ok'   ? `${capEur.size} prebranih prek ${capSource ? capSource.id : '?'}`
+     : capState === 'fail' ? 'ni na voljo' : 'berem ...');
   document.getElementById('pageInfo').textContent =
     `${arr.length ? page*perPage+1 : 0}–${Math.min(arr.length,(page+1)*perPage)} od ${arr.length}`;
 
