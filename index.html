@@ -1165,6 +1165,19 @@ let capSource = null;
    do napačnega sklepa, da noben vir ne deluje. */
 const PROBE_SYMS = ['AAPL','MSFT','AMZN'];
 
+/* Dvajset splošno znanih velikanov. Če imamo kapitalizacijo zanje in
+   skupno pokritost nad 90 %, štejemo branje za popolnoma v redu in o
+   preostalih manjkajočih (običajno redke tuje borze) ne obveščamo vsakič. */
+const CAP_WATCHLIST = ['Apple','Microsoft','NVIDIA','Alphabet','Amazon','Meta Platforms',
+  'Broadcom','Tesla','Berkshire Hathaway','Eli Lilly','JPMorgan Chase','Visa','Mastercard',
+  'Exxon Mobil','UnitedHealth','Walmart','Johnson & Johnson','Procter & Gamble','Home Depot','AbbVie'];
+function capHealthy(){
+  if(!capEur.size) return false;
+  const coverage = capEur.size / COMPANIES.length;
+  const missingWatch = CAP_WATCHLIST.filter(n => !capEur.has(n));
+  return coverage >= 0.9 && missingWatch.length === 0;
+}
+
 async function pickCapSource(){
   for(const src of CAP_SOURCES){
     try{
@@ -1239,11 +1252,13 @@ async function loadCaps(){
   if(capState === 'fail') capFailed();
   else{
     const n = document.getElementById('notice');
-    if(capNoData.size){
+    /* Nekaj manjkajočih tujih borz je pričakovano in se zgodi vsakič,
+       zato o tem ne obveščamo, dokler je pokritost dobra in so
+       najpomembnejša podjetja na seznamu prisotna. */
+    if(!capHealthy() && capNoData.size){
       n.className = 'notice show';
       n.textContent = `Kapitalizacija je prebrana za ${capEur.size} od ${COMPANIES.length} podjetij. `
-        + `Za ${capNoData.size} je vir ne ponuja, ker gre pretežno za tuje borze, ki jih ta vmesnik ne pokriva. `
-        + `Rang za ta podjetja manjka, tečaji pa so zanje še vedno pravilni.`;
+        + `Za ${capNoData.size} je vir ne ponuja. Rang za ta podjetja manjka, tečaji pa so zanje še vedno pravilni.`;
     }else{
       n.className = 'notice';
     }
@@ -1438,7 +1453,7 @@ function health(){
     setStatus('posodobljeno ' + new Date().toLocaleTimeString('sl-SI')
       + (nextAt ? ' · naslednja ob ' + new Date(nextAt).toLocaleTimeString('sl-SI',
           {hour:'2-digit',minute:'2-digit'}) : ''));
-    if(!capNoData.size) n.className = 'notice';
+    if(!capNoData.size || capHealthy()) n.className = 'notice';
   }
 }
 const dot = document.getElementById('dot');
