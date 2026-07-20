@@ -51,9 +51,19 @@ input[type=search]{min-width:150px}
 #cards{padding:2px 0}
 .card{
   position:relative;
-  display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:center;
+  display:grid;grid-template-columns:230px 1fr;gap:10px 14px;align-items:center;
+  grid-template-areas:"ident quotes" "perf perf";
   padding:12px 40px 12px 18px;border-bottom:1px solid #1c2430;cursor:pointer;
 }
+.ident{grid-area:ident}
+.quotes{grid-area:quotes}
+.perf{
+  grid-area:perf;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;
+  border-top:1px solid #1c2430;padding-top:8px;
+}
+.perf .p{text-align:center;font-size:11.5px;min-width:0}
+.perf .p b{display:block;color:var(--dim);font-size:9px;font-weight:500;letter-spacing:.07em;margin-bottom:2px}
+.perf .na{color:var(--dim);opacity:.5}
 .card:hover{background:var(--panel-2)}
 .star{
   position:absolute;top:10px;right:10px;background:none;border:0;cursor:pointer;
@@ -121,7 +131,10 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
   .toolbar .tabs{order:-1;width:100%}
   #q{flex:1 1 130px;min-width:0}
   .status{width:100%;margin:0;text-align:left}
-  .card{grid-template-columns:1fr;gap:9px;padding:13px 40px 13px 14px}
+  .card{grid-template-columns:1fr;grid-template-areas:"ident" "quotes" "perf";gap:9px;padding:13px 40px 13px 14px}
+  .perf{gap:2px;padding-top:7px}
+  .perf .p{font-size:10.5px}
+  .perf .p b{font-size:8px}
   .quotes{gap:7px}
   .q{border-left-width:3px;padding-left:7px}
   .q .venue{font-size:8.5px;letter-spacing:.05em;display:block;line-height:1.5}
@@ -989,23 +1002,24 @@ const SLO = [
   ['ILBB.LJ','Iskra'],['MR1R.LJ','Modra zavarovalnica'],['ZTOG.LJ','Žito']
 ];
 const INDEKSI = [
-  ['^GSPC','S&P 500'],['^DJI','Dow Jones'],['^IXIC','Nasdaq Composite'],['^NDX','Nasdaq 100'],
-  ['^RUT','Russell 2000'],['^VIX','VIX'],['^STOXX50E','Euro Stoxx 50'],['^GDAXI','DAX'],
-  ['^FCHI','CAC 40'],['^FTSE','FTSE 100'],['^IBEX','IBEX 35'],['FTSEMIB.MI','FTSE MIB'],
-  ['^ATX','ATX Dunaj'],['^SSMI','SMI Zürich'],['^N225','Nikkei 225'],['^HSI','Hang Seng'],
-  ['000001.SS','Shanghai Composite'],['^BSESN','Sensex'],['^BVSP','Bovespa'],['^GSPTSE','TSX'],
-  ['EURUSD=X','EUR / USD'],['EURCHF=X','EUR / CHF'],['EURGBP=X','EUR / GBP'],
-  ['EURJPY=X','EUR / JPY'],['DX-Y.NYB','Indeks dolarja'],['^TNX','ZDA 10-letne obveznice']
+  ['^GSPC','S&P 500'],['^NDX','Nasdaq 100'],['^DJI','Dow Jones'],['^IXIC','Nasdaq Composite'],
+  ['^GDAXI','DAX'],['^STOXX50E','Euro Stoxx 50'],['^FTSE','FTSE 100'],['^N225','Nikkei 225'],
+  ['^HSI','Hang Seng'],['^FCHI','CAC 40'],['^VIX','VIX'],['^RUT','Russell 2000'],
+  ['FTSEMIB.MI','FTSE MIB'],['^IBEX','IBEX 35'],['^SSMI','SMI Zürich'],['^ATX','ATX Dunaj'],
+  ['000001.SS','Shanghai Composite'],['^BSESN','Sensex'],['^GSPTSE','TSX Toronto'],['^BVSP','Bovespa'],
+  ['EURUSD=X','EUR / USD'],['DX-Y.NYB','Indeks dolarja'],['EURCHF=X','EUR / CHF'],
+  ['EURGBP=X','EUR / GBP'],['EURJPY=X','EUR / JPY'],['^TNX','ZDA 10-letne obveznice']
 ];
 function simple(list, tag){
-  return list.map(([sym,name]) => ({name, country:tag, region:tag, key: tag + ':' + name,
+  return list.map(([sym,name], i) => ({name, country:tag, region:tag, key: tag + ':' + name, ord:i,
     listings:[{slot: sym.endsWith('.LJ') ? 'eu' : 'dom', sym,
       reg:tag, city:venueName(sym), venue: tag + ' · ' + venueName(sym)}]}));
 }
 /* Za kapitalizacijo uporabimo matično kotacijo, ne potrdila ADR:
    evropsko podjetje se meri po evropski borzi, azijsko po domači. */
-COMPANIES.forEach(c => {
+COMPANIES.forEach((c, i) => {
   c.key = c.name;
+  c.ord = i;
   const by = slot => c.listings.find(l => l.slot === slot);
   c.rankListing = (c.region === 'evropa' ? (by('eu') || by('dom') || by('zda'))
                  : c.region === 'severna' ? (by('zda') || by('dom') || by('eu'))
@@ -1489,6 +1503,95 @@ const dot = document.getElementById('dot');
 function setStatus(t){ document.getElementById('statusText').textContent = t; }
 
 /* =====================================================================
+   2c. DONOSI ZA VEČ OBDOBIJ
+   Iz enega tedenskega niza za 10 let izračunamo referenčne cene za vsako
+   obdobje. Shranimo samo teh šest števil na simbol, ne celotne zgodovine,
+   odstotke pa vedno sproti računamo glede na živi tečaj.
+   ===================================================================== */
+const PERIODS = [['1T',7],['1M',30],['YTD',null],['1L',365],['5L',1825],['10L',3650]];
+const perfRefs = new Map();      // simbol -> {'1T':cena, '1M':cena, ...}
+const perfPending = new Set();
+const perfMissing = new Set();
+
+function mainListing(c){ return c.rankListing || c.listings[0]; }
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+
+function perfSave(){
+  if(!LS) return;
+  try{
+    LS.setItem('bt_perf_v1', JSON.stringify(
+      {d: todayKey(), m: Object.fromEntries(perfRefs)}));
+  }catch(e){}
+}
+function perfLoad(){
+  if(!LS) return;
+  try{
+    const o = JSON.parse(LS.getItem('bt_perf_v1') || 'null');
+    if(!o || o.d !== todayKey()) return;    // reference se osvežijo enkrat dnevno
+    Object.entries(o.m || {}).forEach(([k,v]) => perfRefs.set(k,v));
+  }catch(e){}
+}
+
+async function loadPerf(sym){
+  if(perfRefs.has(sym) || perfPending.has(sym) || perfMissing.has(sym)) return;
+  perfPending.add(sym);
+  try{
+    const res = await getChart(sym, '10y', '1wk');
+    const ts = res.timestamp || [];
+    const cl = res.indicators?.quote?.[0]?.close || [];
+    const pts = [];
+    for(let i=0;i<ts.length;i++) if(cl[i] != null) pts.push({t: ts[i]*1000, v: cl[i]});
+    if(pts.length < 2){ perfMissing.add(sym); return; }
+
+    /* zadnja cena na dan ali pred ciljnim datumom */
+    const refAt = target => {
+      let out = null;
+      for(const p of pts){ if(p.t <= target) out = p.v; else break; }
+      return out;
+    };
+    const now = Date.now();
+    const first = pts[0];
+    const refs = {};
+    PERIODS.forEach(([label, days]) => {
+      const target = days === null
+        ? Date.UTC(new Date().getUTCFullYear(), 0, 1)   // YTD: zadnje zaprtje lani
+        : now - days*86400000;
+      let v = refAt(target);
+      /* Niz za 10 let sega včasih nekaj dni prekratko. Če pokriva vsaj 85 %
+         zahtevanega obdobja, vzamemo najstarejšo razpoložljivo ceno, sicer
+         pustimo prazno, da mlada podjetja ne kažejo lažnih dolgih donosov. */
+      if(v == null && days !== null){
+        const covered = (now - first.t) / (days*86400000);
+        if(covered >= 0.85) v = first.v;
+      }
+      if(v != null) refs[label] = v;
+    });
+    if(Object.keys(refs).length) perfRefs.set(sym, refs);
+    else perfMissing.add(sym);
+    perfSave();
+  }catch(e){
+    perfMissing.add(sym);
+  }finally{
+    perfPending.delete(sym);
+  }
+}
+
+function perfHTML(c){
+  const l = mainListing(c);
+  const d = cache.get(l.sym);
+  const refs = perfRefs.get(l.sym);
+  const live = d && !d.error ? d.price : null;
+  return `<div class="perf">` + PERIODS.map(([label]) => {
+    const ref = refs ? refs[label] : null;
+    if(ref == null || live == null)
+      return `<div class="p"><b>${label}</b><span class="na">·</span></div>`;
+    const pct = (live/ref - 1) * 100;
+    const cls = pct >= 0 ? 'up' : 'down';
+    return `<div class="p"><b>${label}</b><span class="${cls}">${pct>=0?'+':''}${fmt(pct,1)} %</span></div>`;
+  }).join('') + `</div>`;
+}
+
+/* =====================================================================
    3. IZRIS KARTIC
    ===================================================================== */
 let group = 'favorites', page = 0;
@@ -1534,7 +1637,9 @@ function filtered(){
   if(s === 'cap'){
     return [...arr].sort((a,b) => {
       const A = capEur.get(a.name), B = capEur.get(b.name);
-      if(A == null && B == null) return a.name.localeCompare(b.name,'sl');
+      /* Indeksi, surovine in Ljubljana nimajo kapitalizacije, zato zanje
+         obdržimo ročni vrstni red (indeksi so urejeni po priljubljenosti). */
+      if(A == null && B == null) return (a.ord ?? 0) - (b.ord ?? 0);
       if(A == null) return 1;
       if(B == null) return -1;
       return B - A;
@@ -1630,6 +1735,7 @@ function render(){
         <div class="co">${c.country}${capLabel(c)}</div>
       </div>
       <div class="quotes">${c.listings.map(quoteHTML).join('')}</div>
+      ${perfHTML(c)}
     </div>`).join('');
   cardsEl._slice = slice;
   document.getElementById('count').textContent =
@@ -1645,6 +1751,15 @@ function render(){
   const jobs = [];
   slice.forEach(c => c.listings.forEach(l => jobs.push({sym:l.sym, name:c.name})));
   loadQuotes(jobs, repaint);
+
+  /* Zgodovina za donose: samo za matično kotacijo vsake vidne kartice
+     in samo, če je še nimamo za danes. */
+  slice.forEach(async c => {
+    const sym = mainListing(c).sym;
+    if(perfRefs.has(sym) || perfPending.has(sym) || perfMissing.has(sym)) return;
+    await loadPerf(sym);
+    repaint();
+  });
 }
 
 let pending = false;
@@ -1659,6 +1774,8 @@ function repaint(){
       const c = slice[i]; if(!c) return;
       const q = el.querySelector('.quotes'); if(!q) return;
       q.innerHTML = c.listings.map(quoteHTML).join('');
+      const pf = el.querySelector('.perf');
+      if(pf) pf.outerHTML = perfHTML(c);
     });
   });
 }
@@ -1982,6 +2099,7 @@ async function buildTape(){
   document.getElementById('tape').innerHTML = html + html;
 }
 favLoad();
+perfLoad();
 const cached = capsLoad();
 if(cached){ capState = 'ok'; setStatus(`${cached} kapitalizacij iz shrambe`); }
 render();
