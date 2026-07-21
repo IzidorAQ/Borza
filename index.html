@@ -18,6 +18,12 @@ html,body{margin:0;padding:0}
 body{background:var(--ink);color:var(--text);font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace;font-size:13px;-webkit-font-smoothing:antialiased}
 h1,h2,.display{font-family:'Archivo',system-ui,sans-serif;letter-spacing:-.02em}
 
+/* Ob drsenju navzdol se cel pas umakne, ob najmanjšem drsenju navzgor se vrne. */
+#topbar{
+  position:sticky;top:0;z-index:30;background:var(--ink);
+  transition:transform .18s ease;will-change:transform;
+}
+#topbar.hidden{transform:translateY(-100%)}
 .tape{border-bottom:1px solid var(--line);background:var(--panel);overflow:hidden;white-space:nowrap;height:32px}
 .tape-track{display:inline-block;padding-top:8px;animation:slide 95s linear infinite}
 .tape:hover .tape-track{animation-play-state:paused}
@@ -30,7 +36,7 @@ header h1{margin:0;font-size:21px;font-weight:900;text-transform:uppercase}
 header h1 span{color:var(--amber)}
 .sub{color:var(--dim);font-size:11px;margin-left:auto;text-align:right;line-height:1.6}
 
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:20}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
 .tabs{display:flex;gap:2px;background:var(--ink);padding:3px;border-radius:4px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tab{background:none;border:0;color:var(--dim);font-family:inherit;font-size:12px;padding:7px 13px;cursor:pointer;border-radius:3px;white-space:nowrap}
@@ -171,6 +177,7 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
 </head>
 <body>
 
+<div id="topbar">
 <div class="tape" aria-hidden="true"><div class="tape-track" id="tape"></div></div>
 
 <header>
@@ -213,6 +220,7 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
   <button class="btn" id="diag">Diagnostika</button>
   <input type="search" id="ownProxy" placeholder="Lasten proxy" title="Privzeto je vpisan tvoj Cloudflare Worker">
   <div class="status"><span class="dot" id="dot"></span><span id="statusText">pripravljen</span></div>
+</div>
 </div>
 
 <div class="notice" id="notice"></div>
@@ -2165,6 +2173,39 @@ canvas.addEventListener('touchmove',  e => showCross(e.touches[0].clientX), {pas
 canvas.addEventListener('touchend', () => setTimeout(() => cross.style.display = 'none', 1800));
 window.addEventListener('resize', () => { if(openCo) drawChart(); });
 window.addEventListener('orientationchange', () => setTimeout(() => { if(openCo) drawChart(); }, 250));
+
+/* =====================================================================
+   4b. SAMODEJNO SKRIVANJE ZGORNJEGA PASU
+   Ob drsenju navzdol se umakne v celoti, ob najmanjšem drsenju navzgor
+   se takoj vrne. Ko je odprto okno s podrobnostmi, pas pustimo pri miru.
+   ===================================================================== */
+(function(){
+  const bar = document.getElementById('topbar');
+  let lastY = window.scrollY || 0, hidden = false, ticking = false;
+
+  function show(){ if(hidden){ bar.classList.remove('hidden'); hidden = false; } }
+  function hide(){ if(!hidden){ bar.classList.add('hidden');    hidden = true;  } }
+
+  function onScroll(){
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      if(overlay.classList.contains('show')) return;
+      const y = Math.max(0, window.scrollY || 0);
+      const barH = bar.offsetHeight || 120;
+      if(y <= 4){ show(); }
+      else if(y > lastY + 5 && y > barH){ hide(); }   // navzdol
+      else if(y < lastY - 3){ show(); }               // navzgor, takoj
+      lastY = y;
+    });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+
+  /* Ob menjavi zavihka ali iskanju naj bo pas spet viden. */
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', show));
+  window.addEventListener('keydown', e => { if(e.key === 'Escape') show(); });
+})();
 
 /* =====================================================================
    5. TRAK IN ZAGON
