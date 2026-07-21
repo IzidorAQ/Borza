@@ -56,7 +56,12 @@ input[type=search]{min-width:150px}
 .notice.show{display:block}
 
 /* ---------- kartica ---------- */
-#cards{padding:2px 0}
+#cards{padding:2px 0;touch-action:pan-y}
+@keyframes slideL{from{transform:translateX(22px);opacity:.35}to{transform:none;opacity:1}}
+@keyframes slideR{from{transform:translateX(-22px);opacity:.35}to{transform:none;opacity:1}}
+#cards.slide-left{animation:slideL .17s ease-out}
+#cards.slide-right{animation:slideR .17s ease-out}
+@media (prefers-reduced-motion:reduce){#cards.slide-left,#cards.slide-right{animation:none}}
 .card{
   position:relative;
   display:grid;grid-template-columns:1fr;gap:7px;
@@ -1674,7 +1679,7 @@ function perfHTML(c){
    3. IZRIS KARTIC
    ===================================================================== */
 let group = 'favorites', page = 0;
-let perPage = window.innerWidth < 820 ? 12 : 25;
+let perPage = 5;   // pet kartic na stran, da so vse vidne brez drsenja
 const cardsEl = document.getElementById('cards');
 const qEl = document.getElementById('q');
 const sortEl = document.getElementById('sort');
@@ -1874,8 +1879,50 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
 }));
 qEl.addEventListener('input', () => { page = 0; render(); });
 sortEl.onchange = () => { page = 0; render(); };
-document.getElementById('prev').onclick = () => { if(page>0){ page--; render(); scrollTo(0,0); } };
-document.getElementById('next').onclick = () => { page++; render(); scrollTo(0,0); };
+function pageCount(){ return Math.max(1, Math.ceil(filtered().length / perPage)); }
+function goPage(delta){
+  const last = pageCount() - 1;
+  const target = Math.min(last, Math.max(0, page + delta));
+  if(target === page) return;
+  const dir = delta > 0 ? 'left' : 'right';
+  page = target;
+  render();
+  cardsEl.classList.remove('slide-left','slide-right');
+  void cardsEl.offsetWidth;              // ponovni zagon animacije
+  cardsEl.classList.add('slide-' + dir);
+  window.scrollTo(0,0);
+}
+document.getElementById('prev').onclick = () => goPage(-1);
+document.getElementById('next').onclick = () => goPage(1);
+
+/* Poteg levo in desno za naslednjih oziroma prejšnjih pet kartic. */
+(function(){
+  let x0 = null, y0 = 0, t0 = 0;
+  cardsEl.addEventListener('touchstart', e => {
+    if(overlay.classList.contains('show')){ x0 = null; return; }
+    const t = e.touches[0];
+    x0 = t.clientX; y0 = t.clientY; t0 = Date.now();
+  }, {passive:true});
+  cardsEl.addEventListener('touchend', e => {
+    if(x0 === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - x0, dy = t.clientY - y0, dt = Date.now() - t0;
+    x0 = null;
+    if(dt > 700) return;                                  // predolgo, ni poteg
+    if(Math.abs(dx) < 55) return;                         // premalo
+    if(Math.abs(dx) < Math.abs(dy) * 1.6) return;         // navpično drsenje ima prednost
+    goPage(dx < 0 ? 1 : -1);
+  }, {passive:true});
+})();
+
+/* Puščici na tipkovnici za namizje. */
+window.addEventListener('keydown', e => {
+  if(overlay.classList.contains('show')) return;
+  const tag = (e.target.tagName || '').toLowerCase();
+  if(tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  if(e.key === 'ArrowRight') goPage(1);
+  if(e.key === 'ArrowLeft')  goPage(-1);
+});
 document.getElementById('proxy').onchange = e => {
   proxyIdx = +e.target.value; netOk = 0; netFail = 0;
   NET.rate429 = 0; NET.backoff = 0;
