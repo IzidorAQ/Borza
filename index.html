@@ -76,6 +76,10 @@ input[type=search]{min-width:150px}
 .ident .nm{font-family:'Archivo';font-size:15px;font-weight:700;line-height:1.2}
 .ident .co{color:var(--dim);font-size:10.5px;margin-top:3px;letter-spacing:.04em;text-transform:uppercase}
 .ident .cap{color:var(--amber);opacity:.85}
+.ident .dv{margin-top:5px;font-size:10.5px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.ident .dv .y{color:var(--cyan);font-weight:600;font-size:12px}
+.ident .dv .a{color:var(--dim)}
+.ident .dv.none{color:var(--dim);opacity:.55;font-size:10px}
 .quotes{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px}
 .q{border-left:2px solid var(--line);padding:2px 0 2px 10px;min-width:0}
 .q.zda{border-color:rgba(79,214,255,.55)}
@@ -1350,9 +1354,11 @@ async function runDiag(){
 /* =====================================================================
    2b. PRENOS TEČAJEV
    ===================================================================== */
-function yUrl(sym, range, interval, prepost){
+function yUrl(sym, range, interval, prepost, events){
   return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}`
-       + `?range=${range}&interval=${interval}${prepost ? '&includePrePost=true' : ''}`;
+       + `?range=${range}&interval=${interval}`
+       + (prepost ? '&includePrePost=true' : '')
+       + (events  ? '&events=div' : '');
 }
 /* Posredniki imajo urne kvote. Zahtevke zato razmikamo in se ob
    odgovoru 429 samodejno umaknemo, namesto da bi kvoto do konca porabili. */
@@ -1391,8 +1397,8 @@ function rateNotice(){
     + 'ali vpiši naslov svojega posrednika v polje Lasten proxy. Podatki niso napačni, le redkejši.';
 }
 
-async function getChart(sym, range='1d', interval='5m', prepost=false){
-  const r = await netFetch(yUrl(sym,range,interval,prepost));
+async function getChart(sym, range='1d', interval='5m', prepost=false, events=false){
+  const r = await netFetch(yUrl(sym,range,interval,prepost,events));
   const j = await r.json();
   const res = j?.chart?.result?.[0];
   if(!res) throw new Error('brez rezultata');
@@ -1536,7 +1542,7 @@ async function loadPerf(sym){
   if(perfRefs.has(sym) || perfPending.has(sym) || perfMissing.has(sym)) return;
   perfPending.add(sym);
   try{
-    const res = await getChart(sym, '10y', '1wk');
+    const res = await getChart(sym, '10y', '1wk', false, true);   // events=div: dividende v istem zahtevku
     const ts = res.timestamp || [];
     const cl = res.indicators?.quote?.[0]?.close || [];
     const pts = [];
@@ -1566,6 +1572,16 @@ async function loadPerf(sym){
       }
       if(v != null) refs[label] = v;
     });
+    /* Dividende zadnjih 12 mesecev iz istega odgovora.
+       Yahoo jih vrne kot events.dividends s časovnim žigom in zneskom. */
+    const divs = Object.values(res.events?.dividends || {})
+      .map(d => ({t: (d.date || 0)*1000, v: d.amount}))
+      .filter(d => d.v != null);
+    const yearAgo = now - 365*86400000;
+    refs.__div = divs.filter(d => d.t >= yearAgo).reduce((a,d) => a + d.v, 0);
+    refs.__divEver = divs.length ? 1 : 0;
+    refs.__divLast = divs.length ? Math.max(...divs.map(d => d.t)) : 0;
+
     if(Object.keys(refs).length) perfRefs.set(sym, refs);
     else perfMissing.add(sym);
     perfSave();
@@ -1574,6 +1590,29 @@ async function loadPerf(sym){
   }finally{
     perfPending.delete(sym);
   }
+}
+
+/* Dividenda: vsota izplačil v zadnjih 12 mesecih in donos glede na živi tečaj.
+   Znesek in tečaj sta v isti valuti iste kotacije, zato je razmerje pravilno
+   tudi za londonske papirje, ki kotirajo v penijih. */
+function divHTML(c){
+  const l = mainListing(c);
+  const d = cache.get(l.sym);
+  const refs = perfRefs.get(l.sym);
+  if(!refs) return '';
+  const ttm = refs.__div || 0;
+  if(!refs.__divEver) return `<div class="dv none">brez dividend</div>`;
+  if(!ttm){
+    const last = refs.__divLast
+      ? new Date(refs.__divLast).toLocaleDateString('sl-SI',{month:'2-digit',year:'numeric'}) : '';
+    return `<div class="dv none">ni izplačil 12 mesecev${last ? ' · zadnje ' + last : ''}</div>`;
+  }
+  const live = d && !d.error ? d.price : null;
+  const yieldPct = live ? ttm / live * 100 : null;
+  const cur = d && d.cur ? d.cur : '';
+  return `<div class="dv">
+    <span class="y">${yieldPct != null ? fmt(yieldPct,2) + ' %' : '-'}</span>
+    <span class="a">${fmt(ttm, ttm < 10 ? 2 : 2)} ${cur} letno</span></div>`;
 }
 
 function perfHTML(c){
@@ -1733,6 +1772,7 @@ function render(){
       <div class="ident">
         <div class="nm">${c.name}</div>
         <div class="co">${c.country}${capLabel(c)}</div>
+        ${divHTML(c)}
       </div>
       <div class="quotes">${c.listings.map(quoteHTML).join('')}</div>
       ${perfHTML(c)}
@@ -1776,6 +1816,13 @@ function repaint(){
       q.innerHTML = c.listings.map(quoteHTML).join('');
       const pf = el.querySelector('.perf');
       if(pf) pf.outerHTML = perfHTML(c);
+      const id = el.querySelector('.ident');
+      if(id){
+        const dv = id.querySelector('.dv');
+        const html = divHTML(c);
+        if(dv) dv.outerHTML = html;
+        else if(html) id.insertAdjacentHTML('beforeend', html);
+      }
     });
   });
 }
@@ -1963,6 +2010,14 @@ function drawStats(){
     ['Zadnje zaprtje', fmt(d.prev)],
     ['Promet', d.vol != null ? d.vol.toLocaleString('sl-SI') : '-'],
     ['Ime pri viru', d.srcName || '-'],
+    ['Dividenda 12 mesecev', (() => {
+      const refs = perfRefs.get(mainListing(openCo).sym);
+      if(!refs || !refs.__divEver) return 'brez dividend';
+      if(!refs.__div) return 'ni izplačil 12 mesecev';
+      const live = (cache.get(mainListing(openCo).sym) || {}).price;
+      return `${fmt(refs.__div)} ${d.cur || ''}`
+        + (live ? ` · donos ${fmt(refs.__div/live*100, 2)} %` : '');
+    })()],
     ['Tržna kapitalizacija', capEur.has(openCo.name)
       ? capFmt(capEur.get(openCo.name)) + (openCo.rank ? ` · ${openCo.rank}. na svetu v tej bazi` : '') : '-']
   ];
