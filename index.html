@@ -19,11 +19,17 @@ body{background:var(--ink);color:var(--text);font-family:'IBM Plex Mono',ui-mono
 h1,h2,.display{font-family:'Archivo',system-ui,sans-serif;letter-spacing:-.02em}
 
 /* Ob drsenju navzdol se cel pas umakne, ob najmanjšem drsenju navzgor se vrne. */
-#topbar{
-  position:sticky;top:0;z-index:30;background:var(--ink);
-  transition:transform .18s ease;will-change:transform;
+#topbar{position:sticky;top:0;z-index:30;background:var(--ink)}
+/* Zgornji del se skrije in prikaže z gumbom, izbira se zapomni. */
+body.bar-hidden #topbar{display:none}
+#showBar{
+  display:none;position:fixed;top:8px;right:10px;z-index:60;
+  background:rgba(21,27,37,.94);border:1px solid var(--line);color:var(--dim);
+  border-radius:20px;padding:7px 12px;font-family:inherit;font-size:12px;cursor:pointer;
+  backdrop-filter:blur(4px);
 }
-#topbar.hidden{transform:translateY(-100%)}
+#showBar:hover{color:var(--amber);border-color:var(--amber)}
+body.bar-hidden #showBar{display:block}
 .tape{border-bottom:1px solid var(--line);background:var(--panel);overflow:hidden;white-space:nowrap;height:32px}
 .tape-track{display:inline-block;padding-top:8px;animation:slide 95s linear infinite}
 .tape:hover .tape-track{animation-play-state:paused}
@@ -224,9 +230,12 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
   <button class="btn" id="slow">Počasen način</button>
   <button class="btn" id="diag">Diagnostika</button>
   <input type="search" id="ownProxy" placeholder="Lasten proxy" title="Privzeto je vpisan tvoj Cloudflare Worker">
+  <button class="btn" id="hideBar" title="Skrij zgornji del">▲ skrij</button>
   <div class="status"><span class="dot" id="dot"></span><span id="statusText">pripravljen</span></div>
 </div>
 </div>
+
+<button id="showBar" title="Prikaži orodja">▼ orodja</button>
 
 <div class="notice" id="notice"></div>
 <div class="count" id="count"></div>
@@ -2222,37 +2231,15 @@ window.addEventListener('resize', () => { if(openCo) drawChart(); });
 window.addEventListener('orientationchange', () => setTimeout(() => { if(openCo) drawChart(); }, 250));
 
 /* =====================================================================
-   4b. SAMODEJNO SKRIVANJE ZGORNJEGA PASU
-   Ob drsenju navzdol se umakne v celoti, ob najmanjšem drsenju navzgor
-   se takoj vrne. Ko je odprto okno s podrobnostmi, pas pustimo pri miru.
+   4b. SKRIVANJE ZGORNJEGA DELA Z GUMBOM
    ===================================================================== */
-(function(){
-  const bar = document.getElementById('topbar');
-  let lastY = window.scrollY || 0, hidden = false, ticking = false;
-
-  function show(){ if(hidden){ bar.classList.remove('hidden'); hidden = false; } }
-  function hide(){ if(!hidden){ bar.classList.add('hidden');    hidden = true;  } }
-
-  function onScroll(){
-    if(ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      ticking = false;
-      if(overlay.classList.contains('show')) return;
-      const y = Math.max(0, window.scrollY || 0);
-      const barH = bar.offsetHeight || 120;
-      if(y <= 4){ show(); }
-      else if(y > lastY + 5 && y > barH){ hide(); }   // navzdol
-      else if(y < lastY - 3){ show(); }               // navzgor, takoj
-      lastY = y;
-    });
-  }
-  window.addEventListener('scroll', onScroll, {passive:true});
-
-  /* Ob menjavi zavihka ali iskanju naj bo pas spet viden. */
-  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', show));
-  window.addEventListener('keydown', e => { if(e.key === 'Escape') show(); });
-})();
+function setBar(hidden){
+  document.body.classList.toggle('bar-hidden', hidden);
+  if(LS){ try{ LS.setItem('bt_bar', hidden ? '1' : '0'); }catch(e){} }
+}
+document.getElementById('hideBar').onclick = () => setBar(true);
+document.getElementById('showBar').onclick = () => setBar(false);
+if(LS && LS.getItem('bt_bar') === '1') setBar(true);
 
 /* =====================================================================
    5. TRAK IN ZAGON
