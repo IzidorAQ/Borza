@@ -51,15 +51,15 @@ input[type=search]{min-width:150px}
 #cards{padding:2px 0}
 .card{
   position:relative;
-  display:grid;grid-template-columns:230px 1fr;gap:10px 14px;align-items:center;
-  grid-template-areas:"ident quotes" "perf perf";
-  padding:12px 40px 12px 18px;border-bottom:1px solid #1c2430;cursor:pointer;
+  display:grid;grid-template-columns:1fr;gap:7px;
+  grid-template-areas:"ident" "quotes" "perf";
+  padding:10px 40px 10px 18px;border-bottom:1px solid #1c2430;cursor:pointer;
 }
 .ident{grid-area:ident}
 .quotes{grid-area:quotes}
 .perf{
   grid-area:perf;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;
-  border-top:1px solid #1c2430;padding-top:8px;
+  border-top:1px solid #1c2430;padding-top:6px;
 }
 .perf .p{text-align:center;font-size:11.5px;min-width:0}
 .perf .p b{display:block;color:var(--dim);font-size:9px;font-weight:500;letter-spacing:.07em;margin-bottom:2px}
@@ -73,13 +73,15 @@ input[type=search]{min-width:150px}
 .star.on{color:var(--amber)}
 .empty-fav{padding:40px 20px;text-align:center;color:var(--dim);line-height:1.8}
 .empty-fav b{color:var(--text)}
-.ident .nm{font-family:'Archivo';font-size:15px;font-weight:700;line-height:1.2}
-.ident .co{color:var(--dim);font-size:10.5px;margin-top:3px;letter-spacing:.04em;text-transform:uppercase}
+/* ime, država, kapitalizacija in dividenda v eni sami vrstici */
+.ident{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 9px;min-width:0}
+.ident .nm{font-family:'Archivo';font-size:14.5px;font-weight:700;line-height:1.25}
+.ident .co{color:var(--dim);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
 .ident .cap{color:var(--amber);opacity:.85}
-.ident .dv{margin-top:5px;font-size:10.5px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
-.ident .dv .y{color:var(--cyan);font-weight:600;font-size:12px}
+.ident .dv{font-size:10.5px;display:inline-flex;gap:5px;align-items:baseline}
+.ident .dv .y{color:var(--cyan);font-weight:600;font-size:11.5px}
 .ident .dv .a{color:var(--dim)}
-.ident .dv.none{color:var(--dim);opacity:.55;font-size:10px}
+.ident .dv.none{color:var(--dim);opacity:.5;font-size:9.5px}
 .quotes{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px}
 .q{border-left:2px solid var(--line);padding:2px 0 2px 10px;min-width:0}
 .q.zda{border-color:rgba(79,214,255,.55)}
@@ -135,8 +137,10 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
   .toolbar .tabs{order:-1;width:100%}
   #q{flex:1 1 130px;min-width:0}
   .status{width:100%;margin:0;text-align:left}
-  .card{grid-template-columns:1fr;grid-template-areas:"ident" "quotes" "perf";gap:9px;padding:13px 40px 13px 14px}
-  .perf{gap:2px;padding-top:7px}
+  .card{gap:6px;padding:10px 36px 10px 14px}
+  .ident{gap:2px 7px}
+  .ident .nm{font-size:13.5px}
+  .perf{gap:2px;padding-top:5px}
   .perf .p{font-size:10.5px}
   .perf .p b{font-size:8px}
   .quotes{gap:7px}
