@@ -1614,19 +1614,19 @@ function todayKey(){ return new Date().toISOString().slice(0,10); }
 function perfSave(){
   if(!LS) return;
   try{
-    LS.setItem('bt_perf_v2', JSON.stringify(
+    LS.setItem('bt_perf_v3', JSON.stringify(
       {d: todayKey(), m: Object.fromEntries(perfRefs)}));
   }catch(e){}
 }
 function perfLoad(){
   if(!LS) return;
   try{
-    const o = JSON.parse(LS.getItem('bt_perf_v2') || 'null');
+    const o = JSON.parse(LS.getItem('bt_perf_v3') || 'null');
     if(!o || o.d !== todayKey()) return;    // reference se osvežijo enkrat dnevno
     /* Zapisi brez dividendnega polja so iz starejše različice, zato jih
        ne uporabimo, sicer bi se prikazalo lažno "brez dividend". */
     Object.entries(o.m || {}).forEach(([k,v]) => {
-      if(v && v.__divEver !== undefined) perfRefs.set(k,v);
+      if(v && v.__divEver !== undefined && v.__sh) perfRefs.set(k,v);
     });
   }catch(e){}
 }
@@ -1775,7 +1775,7 @@ function perfHTML(c){
     const total = sh ? (sh*live/ref - 1) * 100 : price;       // s reinvestiranimi dividendami
     const cls = total >= 0 ? 'up' : 'down';
     const extra = Math.abs(total - price) >= 0.05
-      ? `<i class="only">${perfLabel(price)}</i>` : '';
+      ? `<i class="only">cena ${perfLabel(price)}</i>` : '';
     return `<div class="p"><b>${label}</b><span class="${cls}">${perfLabel(total)}</span>${extra}</div>`;
   }).join('') + `</div>`;
 }
