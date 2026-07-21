@@ -83,6 +83,7 @@ input[type=search]{min-width:150px}
 .perf .p{text-align:center;font-size:11.5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .perf .p b{display:block;color:var(--dim);font-size:9px;font-weight:500;letter-spacing:.07em;margin-bottom:2px}
 .perf .na{color:var(--dim);opacity:.5}
+.perf .only{display:block;font-style:normal;font-size:8.5px;color:var(--dim);opacity:.7;margin-top:1px}
 .card:hover{background:var(--panel-2)}
 .star{
   position:absolute;top:10px;right:10px;background:none;border:0;cursor:pointer;
@@ -217,6 +218,11 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
     <option value="pct">Razvrsti: dnevna sprememba</option>
     <option value="ext">Razvrsti: izven redne seje</option>
   </select>
+  <select id="tax" title="Kako se upošteva davek na dividende">
+    <option value="neto">Davek: dejanski odtegljaj + SI</option>
+    <option value="vracilo">Davek: s povračilom presežka</option>
+    <option value="bruto">Davek: bruto, brez davka</option>
+  </select>
   <select id="proxy">
     <option value="0">moj Cloudflare Worker</option>
     <option value="1">corsproxy.io</option>
@@ -269,6 +275,8 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
   Kotacije istega podjetja se med borzami razlikujejo zaradi valute, razmerja pri potrdilih ADR, časovnega zamika in likvidnosti. Sekundarne kotacije v Frankfurtu in ameriška potrdila ADR so pogosto redko trgovana, zato je njihova cena lahko zastarela tudi med odprto borzo. Merodajna je domača borza podjetja.
   <br><br>
   Sprememba pred odprtjem se meri glede na zadnje zaključno vrednost, sprememba po zaprtju pa glede na današnji zaključni tečaj. Predtrgovanje in potrgovanje objavljajo predvsem ameriške borze, drugod je prikazano samo stanje seje.
+  <br><br>
+  Skupni donos predpostavlja nakup na začetku obdobja in reinvestiranje vsake neto dividende po tečaju ob izplačilu. Manjše število pod njim je donos samega tečaja brez dividend. Slovenski rezident plača od dividend 25 odstotkov dohodnine, tuji odtegljaj pa se prizna kot odbitek največ do stopnje iz konvencije, ki je za dividende praviloma 15 odstotkov. Ameriška dividenda tako pomeni 15 odstotkov v ZDA in 10 odstotkov doplačila v Sloveniji, italijanska pa 26 odstotkov v Italiji in 10 odstotkov v Sloveniji, ker Slovenija prizna le 15 odstotkov. Razliko nad stopnjo iz konvencije je mogoče izterjati od tuje davčne uprave, kar zajema način s povračilom presežka. Stopnje so privzete za portfeljske deleže, se spreminjajo in niso davčni nasvet, zato jih za svoj primer preveri pri FURS ali davčnem svetovalcu.
   <br><br>
   Če se ob kotaciji pojavi opozorilna oznaka, ime papirja pri viru ne ustreza pričakovanemu podjetju. To pomeni napačen simbol v seznamu in vrednosti ne gre upoštevati.
 </footer>
@@ -1544,12 +1552,63 @@ function setStatus(t){ document.getElementById('statusText').textContent = t; }
    obdobje. Shranimo samo teh šest števil na simbol, ne celotne zgodovine,
    odstotke pa vedno sproti računamo glede na živi tečaj.
    ===================================================================== */
+/* --------------------------------------------------------------------
+   DAVEK NA DIVIDENDE ZA SLOVENSKEGA REZIDENTA (fizično osebo)
+   Slovenija obdavči dividende s 25 % (dokončni davek, ZDoh-2).
+   Davek, plačan v tujini, se prizna kot odbitek, vendar največ do
+   stopnje iz konvencije o izogibanju dvojnega obdavčevanja (KIDO),
+   ki je za dividende praviloma 15 %.
+     w = dejanski odtegljaj v državi vira
+     k = stopnja po konvenciji, do katere Slovenija prizna odbitek
+   Presežek nad k je izterljiv od tuje uprave, a le če vložiš zahtevek.
+   Stopnje veljajo za portfeljske deleže in se lahko spremenijo.
+   -------------------------------------------------------------------- */
+const SI_RATE = 0.25;
+const TAX = {
+  'Slovenija':{w:25,k:25}, 'ZDA':{w:15,k:15}, 'Nemčija':{w:26.375,k:15},
+  'Švica':{w:35,k:15}, 'Francija':{w:12.8,k:15}, 'Italija':{w:26,k:15},
+  'Nizozemska':{w:15,k:15}, 'Zdr. kraljestvo':{w:0,k:15}, 'Irska':{w:25,k:15},
+  'Španija':{w:19,k:15}, 'Belgija':{w:30,k:15}, 'Avstrija':{w:27.5,k:15},
+  'Danska':{w:27,k:15}, 'Švedska':{w:30,k:15}, 'Norveška':{w:25,k:15},
+  'Finska':{w:30,k:15}, 'Portugalska':{w:28,k:15}, 'Poljska':{w:19,k:15},
+  'Češka':{w:15,k:15}, 'Madžarska':{w:15,k:15}, 'Luksemburg':{w:15,k:15},
+  'Japonska':{w:15.315,k:15}, 'Kitajska':{w:10,k:10}, 'Hongkong':{w:0,k:0},
+  'Tajvan':{w:21,k:0}, 'Južna Koreja':{w:22,k:15}, 'Indija':{w:20,k:15},
+  'Kanada':{w:25,k:15}, 'Avstralija':{w:30,k:15}, 'Brazilija':{w:0,k:15},
+  'Mehika':{w:10,k:15}, 'Savdska Arabija':{w:5,k:5}, 'Izrael':{w:25,k:15},
+  'Singapur':{w:0,k:0}, 'Južna Afrika':{w:20,k:15}, 'Argentina':{w:7,k:15}
+};
+const TAX_MODES = ['bruto','neto','vracilo'];
+
+function taxRate(country, mode){
+  if(mode === 'bruto') return 0;
+  const t = TAX[country] || {w:15, k:15};
+  const w = t.w/100;
+  const credit = Math.min(t.k/100, w);              // odbitek, omejen s konvencijo
+  if(mode === 'vracilo') return Math.max(SI_RATE, credit);   // presežek izterjan
+  return w + Math.max(0, SI_RATE - credit);         // presežek ostane strošek
+}
+function taxLabel(country, mode){
+  if(mode === 'bruto') return 'bruto, brez davka';
+  const t = TAX[country] || {w:15,k:15};
+  const r = taxRate(country, mode) * 100;
+  const si = Math.max(0, SI_RATE*100 - Math.min(t.k, t.w));
+  if(mode === 'vracilo')
+    return `${fmt(Math.min(t.k,t.w),0)} % vir + ${fmt(si,0)} % SI = ${fmt(r,1)} %`;
+  return `${fmt(t.w,1)} % ${country} + ${fmt(si,0)} % SI = ${fmt(r,1)} %`;
+}
+
 const PERIODS = [['1T',7],['1M',30],['YTD',null],['1L',365],['5L',1825],['10L',3650]];
 const perfRefs = new Map();      // simbol -> {'1T':cena, '1M':cena, ...}
 const perfPending = new Set();
 const perfMissing = new Set();
+const symCountry = new Map();   // simbol matične kotacije -> država vira dividend
 
 function mainListing(c){ return c.rankListing || c.listings[0]; }
+function taxMode(){
+  const el = document.getElementById('tax');
+  return el ? el.value : 'neto';
+}
 function todayKey(){ return new Date().toISOString().slice(0,10); }
 
 function perfSave(){
@@ -1606,6 +1665,16 @@ async function loadPerf(sym){
       }
       if(v != null) refs[label] = v;
     });
+    /* SKUPNI DONOS (total return)
+       Simuliramo nakup ene delnice na začetku obdobja in reinvestiranje
+       vsake neto dividende po tečaju ob izplačilu. Shranimo končno število
+       delnic za vsako obdobje in vsak davčni način, kar je 18 števil.
+       Odstotek se nato računa sproti iz živega tečaja. */
+    const priceAt = target => {
+      let out = null;
+      for(const pt of pts){ if(pt.t <= target) out = pt.v; else break; }
+      return out || (pts[0] ? pts[0].v : null);
+    };
     /* Dividende zadnjih 12 mesecev iz istega odgovora.
        Yahoo jih vrne kot events.dividends s časovnim žigom in zneskom. */
     const readDivs = r => Object.values(r.events?.dividends || {})
@@ -1625,6 +1694,28 @@ async function loadPerf(sym){
     refs.__div = divs.filter(d => d.t >= yearAgo).reduce((a,d) => a + d.v, 0);
     refs.__divEver = divs.length ? 1 : 0;
     refs.__divLast = divs.length ? Math.max(...divs.map(d => d.t)) : 0;
+
+    /* končno število delnic po obdobjih in davčnih načinih */
+    const country = symCountry.get(sym) || '';
+    refs.__sh = {};
+    TAX_MODES.forEach(mode => {
+      const rate = taxRate(country, mode);
+      const per = {};
+      PERIODS.forEach(([label, days]) => {
+        const start = days === null
+          ? Date.UTC(new Date().getUTCFullYear(), 0, 1)
+          : now - days*86400000;
+        if(refs[label] == null) return;
+        let shares = 1;
+        for(const dv of divs){
+          if(dv.t < start || dv.t > now) continue;
+          const px = priceAt(dv.t);
+          if(px > 0) shares += shares * (dv.v * (1 - rate)) / px;
+        }
+        per[label] = shares;
+      });
+      refs.__sh[mode] = per;
+    });
 
     if(Object.keys(refs).length) perfRefs.set(sym, refs);
     else perfMissing.add(sym);
@@ -1674,13 +1765,18 @@ function perfHTML(c){
   const d = cache.get(l.sym);
   const refs = perfRefs.get(l.sym);
   const live = d && !d.error ? d.price : null;
+  const mode = taxMode();
   return `<div class="perf">` + PERIODS.map(([label]) => {
     const ref = refs ? refs[label] : null;
     if(ref == null || live == null)
       return `<div class="p"><b>${label}</b><span class="na">·</span></div>`;
-    const pct = (live/ref - 1) * 100;
-    const cls = pct >= 0 ? 'up' : 'down';
-    return `<div class="p"><b>${label}</b><span class="${cls}">${perfLabel(pct)}</span></div>`;
+    const price = (live/ref - 1) * 100;                       // samo tečaj
+    const sh = refs.__sh && refs.__sh[mode] ? refs.__sh[mode][label] : null;
+    const total = sh ? (sh*live/ref - 1) * 100 : price;       // s reinvestiranimi dividendami
+    const cls = total >= 0 ? 'up' : 'down';
+    const extra = Math.abs(total - price) >= 0.05
+      ? `<i class="only">${perfLabel(price)}</i>` : '';
+    return `<div class="p"><b>${label}</b><span class="${cls}">${perfLabel(total)}</span>${extra}</div>`;
   }).join('') + `</div>`;
 }
 
@@ -1787,7 +1883,7 @@ function quoteHTML(l){
     <div class="main"><span class="px">${fmt(d.price, d.price<10?4:2)}</span>
       <span class="cur">${d.cur}</span>
       <span class="pct ${up?'up':'down'}">${up?'+':''}${fmt(d.pct)} %</span>${warn}</div>
-    ${ext}${sparkSVG(d.spark, up)}</div>`;
+    ${ext}</div>`;
 }
 
 function capFmt(v){
@@ -1850,6 +1946,7 @@ function render(){
      in samo, če je še nimamo za danes. */
   slice.forEach(async c => {
     const sym = mainListing(c).sym;
+    symCountry.set(sym, c.country);
     if(perfRefs.has(sym) || perfPending.has(sym) || perfMissing.has(sym)) return;
     await loadPerf(sym);
     repaint();
@@ -2106,6 +2203,7 @@ function drawStats(){
     ['Zadnje zaprtje', fmt(d.prev)],
     ['Promet', d.vol != null ? d.vol.toLocaleString('sl-SI') : '-'],
     ['Ime pri viru', d.srcName || '-'],
+    ['Davek na dividende', taxLabel(openCo.country, taxMode())],
     ['Dividenda 12 mesecev', (() => {
       const refs = perfRefs.get(mainListing(openCo).sym);
       if(!refs || refs.__divEver === undefined) return 'še ni prebrano';
@@ -2237,6 +2335,13 @@ function setBar(hidden){
   document.body.classList.toggle('bar-hidden', hidden);
   if(LS){ try{ LS.setItem('bt_bar', hidden ? '1' : '0'); }catch(e){} }
 }
+const taxEl = document.getElementById('tax');
+if(LS && LS.getItem('bt_tax')) taxEl.value = LS.getItem('bt_tax');
+taxEl.onchange = () => {
+  if(LS){ try{ LS.setItem('bt_tax', taxEl.value); }catch(e){} }
+  render();
+};
+
 document.getElementById('hideBar').onclick = () => setBar(true);
 document.getElementById('showBar').onclick = () => setBar(false);
 if(LS && LS.getItem('bt_bar') === '1') setBar(true);
