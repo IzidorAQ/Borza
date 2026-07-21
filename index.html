@@ -1525,16 +1525,20 @@ function todayKey(){ return new Date().toISOString().slice(0,10); }
 function perfSave(){
   if(!LS) return;
   try{
-    LS.setItem('bt_perf_v1', JSON.stringify(
+    LS.setItem('bt_perf_v2', JSON.stringify(
       {d: todayKey(), m: Object.fromEntries(perfRefs)}));
   }catch(e){}
 }
 function perfLoad(){
   if(!LS) return;
   try{
-    const o = JSON.parse(LS.getItem('bt_perf_v1') || 'null');
+    const o = JSON.parse(LS.getItem('bt_perf_v2') || 'null');
     if(!o || o.d !== todayKey()) return;    // reference se osvežijo enkrat dnevno
-    Object.entries(o.m || {}).forEach(([k,v]) => perfRefs.set(k,v));
+    /* Zapisi brez dividendnega polja so iz starejše različice, zato jih
+       ne uporabimo, sicer bi se prikazalo lažno "brez dividend". */
+    Object.entries(o.m || {}).forEach(([k,v]) => {
+      if(v && v.__divEver !== undefined) perfRefs.set(k,v);
+    });
   }catch(e){}
 }
 
@@ -1574,9 +1578,19 @@ async function loadPerf(sym){
     });
     /* Dividende zadnjih 12 mesecev iz istega odgovora.
        Yahoo jih vrne kot events.dividends s časovnim žigom in zneskom. */
-    const divs = Object.values(res.events?.dividends || {})
-      .map(d => ({t: (d.date || 0)*1000, v: d.amount}))
-      .filter(d => d.v != null);
+    const readDivs = r => Object.values(r.events?.dividends || {})
+      .map(x => ({t: (x.date || 0)*1000, v: x.amount}))
+      .filter(x => x.v != null);
+
+    let divs = readDivs(res);
+    /* Če tedenski niz ne vrne nobenega izplačila, to še ne pomeni, da jih ni.
+       Preverimo z dnevnim nizom, ki dividendne dogodke zanesljivo vrača,
+       in šele nato zapišemo, da podjetje ne izplačuje. */
+    if(!divs.length){
+      try{
+        divs = readDivs(await getChart(sym, '2y', '1d', false, true));
+      }catch(e){}
+    }
     const yearAgo = now - 365*86400000;
     refs.__div = divs.filter(d => d.t >= yearAgo).reduce((a,d) => a + d.v, 0);
     refs.__divEver = divs.length ? 1 : 0;
@@ -1599,7 +1613,7 @@ function divHTML(c){
   const l = mainListing(c);
   const d = cache.get(l.sym);
   const refs = perfRefs.get(l.sym);
-  if(!refs) return '';
+  if(!refs || refs.__divEver === undefined) return '';   // še ni podatka, ne trdimo ničesar
   const ttm = refs.__div || 0;
   if(!refs.__divEver) return `<div class="dv none">brez dividend</div>`;
   if(!ttm){
@@ -2012,7 +2026,8 @@ function drawStats(){
     ['Ime pri viru', d.srcName || '-'],
     ['Dividenda 12 mesecev', (() => {
       const refs = perfRefs.get(mainListing(openCo).sym);
-      if(!refs || !refs.__divEver) return 'brez dividend';
+      if(!refs || refs.__divEver === undefined) return 'še ni prebrano';
+      if(!refs.__divEver) return 'brez dividend';
       if(!refs.__div) return 'ni izplačil 12 mesecev';
       const live = (cache.get(mainListing(openCo).sym) || {}).price;
       return `${fmt(refs.__div)} ${d.cur || ''}`
