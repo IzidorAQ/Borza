@@ -109,10 +109,13 @@ input[type=search]{min-width:150px}
 .q.dom{border-color:rgba(255,181,71,.55)}
 .q .venue{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);display:flex;gap:6px;align-items:center}
 .q .sym{color:var(--dim);opacity:.75}
-.q .main{display:flex;align-items:baseline;gap:8px;margin-top:3px;flex-wrap:wrap}
-.q .px{font-size:15px;font-weight:600}
+.q .main{position:relative;display:flex;align-items:baseline;gap:8px;margin-top:3px;flex-wrap:wrap;min-height:20px}
+.q .px{font-size:15px;font-weight:600;line-height:1}
 .q .cur{font-size:10px;color:var(--dim)}
-.q .pct{font-size:20px;font-weight:700}
+.q .pct{
+  font-size:22px;font-weight:700;line-height:1;
+  position:relative;top:-6px;   /* dvig cez zgornjo vrstico, brez rasti visine */
+}
 .q .ext{font-size:11px;margin-top:3px;color:var(--dim);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .q .miss{color:var(--dim);font-size:11.5px;margin-top:4px;opacity:.7}
 .up{color:var(--up)} .down{color:var(--down)}
