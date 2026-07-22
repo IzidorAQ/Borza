@@ -285,718 +285,718 @@ footer{padding:20px 18px 50px;color:var(--dim);font-size:11px;line-height:1.75;b
 /* =====================================================================
    1. PODATKI
    ===================================================================== */
-const RAW = `Apple|ZDA|AAPL|APC.DE|
-Microsoft|ZDA|MSFT|MSF.DE|
-NVIDIA|ZDA|NVDA|NVD.DE|
-Alphabet|ZDA|GOOGL|ABEA.DE|
-Amazon|ZDA|AMZN|AMZ.DE|
-Meta Platforms|ZDA|META|FB2A.DE|
-Broadcom|ZDA|AVGO|1YD.DE|
-Tesla|ZDA|TSLA|TL0.DE|
-Berkshire Hathaway|ZDA|BRK-B|BRYN.DE|
-Eli Lilly|ZDA|LLY|LLY.DE|
-JPMorgan Chase|ZDA|JPM|CMC.DE|
-Visa|ZDA|V|3V64.DE|
-Mastercard|ZDA|MA|M4I.DE|
-Exxon Mobil|ZDA|XOM|XONA.DE|
-UnitedHealth|ZDA|UNH|UNH.DE|
-Costco|ZDA|COST|CTO.DE|
-Walmart|ZDA|WMT|WMT.DE|
-Johnson & Johnson|ZDA|JNJ|JNJ.DE|
-Procter & Gamble|ZDA|PG|PRG.DE|
-Home Depot|ZDA|HD|HDI.DE|
-AbbVie|ZDA|ABBV|4AB.DE|
-Netflix|ZDA|NFLX|NFC.DE|
-Coca-Cola|ZDA|KO|CCC3.DE|
-Merck|ZDA|MRK|6MK.DE|
-Chevron|ZDA|CVX|CHV.DE|
-Bank of America|ZDA|BAC|NCB.DE|
-Salesforce|ZDA|CRM|FOO.DE|
-Advanced Micro Devices|ZDA|AMD|AMD.DE|
-PepsiCo|ZDA|PEP|PEP.DE|
-Adobe|ZDA|ADBE|ADB.DE|
-Linde|ZDA|LIN|LIN.DE|
-Thermo Fisher|ZDA|TMO|TMO.DE|
-Cisco|ZDA|CSCO|CIS.DE|
-McDonald's|ZDA|MCD|MDO.DE|
-Accenture|ZDA|ACN|ACN.DE|
-Oracle|ZDA|ORCL|ORC.DE|
-Abbott|ZDA|ABT|ABL.DE|
-Wells Fargo|ZDA|WFC|NWT.DE|
-Walt Disney|ZDA|DIS|WDP.DE|
-General Electric|ZDA|GE|GCP.DE|
-Intel|ZDA|INTC|INL.DE|
-Qualcomm|ZDA|QCOM|QCI.DE|
-IBM|ZDA|IBM|IBM.DE|
-Caterpillar|ZDA|CAT|CAT1.DE|
-Verizon|ZDA|VZ|BAC.DE|
-Texas Instruments|ZDA|TXN|TII.DE|
-Amgen|ZDA|AMGN|AMG.DE|
-Danaher|ZDA|DHR|DAA.DE|
-Pfizer|ZDA|PFE|PFE.DE|
-Comcast|ZDA|CMCSA|CTP2.DE|
-Philip Morris|ZDA|PM|4I1.DE|
-Intuit|ZDA|INTU|ITU.DE|
-ServiceNow|ZDA|NOW|4S0.DE|
-Uber|ZDA|UBER|UT8.DE|
-Palantir|ZDA|PLTR|PTX.DE|
-Boeing|ZDA|BA|BCO.DE|
-Nike|ZDA|NKE|NKE.DE|
-Starbucks|ZDA|SBUX|SRB.DE|
-Goldman Sachs|ZDA|GS|GOS.DE|
-Morgan Stanley|ZDA|MS|DWD.DE|
-American Express|ZDA|AXP|AEC1.DE|
-3M|ZDA|MMM|MMM.DE|
-Micron|ZDA|MU|MTE.DE|
-Applied Materials|ZDA|AMAT|AP2.DE|
-Lam Research|ZDA|LRCX|LAM.DE|
-Booking Holdings|ZDA|BKNG|PCE1.DE|
-PayPal|ZDA|PYPL|2PP.DE|
-Union Pacific|ZDA|UNP|UNP.DE|
-Honeywell|ZDA|HON|HON.DE|
-RTX|ZDA|RTX|RTN.DE|
-Lockheed Martin|ZDA|LMT|LOM.DE|
-S&P Global|ZDA|SPGI|MHP.DE|
-Blackstone|ZDA|BX|4BS.DE|
-BlackRock|ZDA|BLK|BLQA.DE|
-Citigroup|ZDA|C|TRV.DE|
-Charles Schwab|ZDA|SCHW|SWG.DE|
-Elevance Health|ZDA|ELV|WP3.DE|
-Stryker|ZDA|SYK|SYK.DE|
-Medtronic|ZDA|MDT|MDT.DE|
-Bristol-Myers Squibb|ZDA|BMY|BRM.DE|
-Gilead|ZDA|GILD|GIS.DE|
-Vertex|ZDA|VRTX|VX1.DE|
-Regeneron|ZDA|REGN|RGB.DE|
-Moderna|ZDA|MRNA|0QF.DE|
-Analog Devices|ZDA|ADI|ANO.DE|
-KLA|ZDA|KLAC|KLA.DE|
-Synopsys|ZDA|SNPS|SNP.DE|
-Cadence|ZDA|CDNS|CDS.DE|
-Arista Networks|ZDA|ANET|4AT.DE|
-Palo Alto Networks|ZDA|PANW|5AP.DE|
-CrowdStrike|ZDA|CRWD|4S2.DE|
-Snowflake|ZDA|SNOW|5Q5.DE|
-Airbnb|ZDA|ABNB|9BN.DE|
-Coinbase|ZDA|COIN|1QZ.DE|
-Block|ZDA|XYZ|SQU.DE|
-Shopify|ZDA|SHOP|307.DE|9SHOP.TO
-Spotify|Švedska|SPOT|R6H.DE|
-MercadoLibre|Argentina|MELI|MLB.DE|
-Marvell|ZDA|MRVL|91M.DE|
-NXP Semiconductors|Nizozemska|NXPI|VNX.DE|
-ON Semiconductor|ZDA|ON|XS4.DE|
-GE HealthCare|ZDA|GEHC||
-Northrop Grumman|ZDA|NOC|NTH.DE|
-General Dynamics|ZDA|GD|GDX.DE|
-Deere|ZDA|DE|DCO.DE|
-ConocoPhillips|ZDA|COP|YCP.DE|
-EOG Resources|ZDA|EOG|EOG.DE|
-Schlumberger|ZDA|SLB|SLB.DE|
-Marathon Petroleum|ZDA|MPC||
-Phillips 66|ZDA|PSX||
-Valero|ZDA|VLO||
-Occidental|ZDA|OXY|OPC.DE|
-Kinder Morgan|ZDA|KMI||
-Williams|ZDA|WMB||
-NextEra Energy|ZDA|NEE|NEX.DE|
-Southern|ZDA|SO||
-Duke Energy|ZDA|DUK||
-Constellation Energy|ZDA|CEG||
-Vistra|ZDA|VST||
-Dominion|ZDA|D||
-American Electric Power|ZDA|AEP||
-Sempra|ZDA|SRE||
-Exelon|ZDA|EXC||
-Xcel Energy|ZDA|XEL||
-PG&E|ZDA|PCG||
-Edison International|ZDA|EIX||
-Public Service Enterprise|ZDA|PEG||
-WEC Energy|ZDA|WEC||
-Entergy|ZDA|ETR||
-DTE Energy|ZDA|DTE||
-Ameren|ZDA|AEE||
-FirstEnergy|ZDA|FE||
-PPL|ZDA|PPL||
-CenterPoint|ZDA|CNP||
-Alliant Energy|ZDA|LNT||
-Evergy|ZDA|EVRG||
-NRG Energy|ZDA|NRG||
-Progressive|ZDA|PGR||
-Chubb|ZDA|CB||
-Marsh McLennan|ZDA|MMC||
-Aon|ZDA|AON||
-Travelers|ZDA|TRV||
-Allstate|ZDA|ALL||
-MetLife|ZDA|MET||
-Prudential Financial|ZDA|PRU||
-Aflac|ZDA|AFL||
-AIG|ZDA|AIG||
-Hartford|ZDA|HIG||
-Arthur J. Gallagher|ZDA|AJG||
-Cincinnati Financial|ZDA|CINF||
-W. R. Berkley|ZDA|WRB||
-Arch Capital|ZDA|ACGL||
-Principal Financial|ZDA|PFG||
-Ameriprise|ZDA|AMP||
-Discover|ZDA|DFS||
-Capital One|ZDA|COF||
-Synchrony|ZDA|SYF||
-US Bancorp|ZDA|USB||
-PNC Financial|ZDA|PNC||
-Truist|ZDA|TFC||
-Fifth Third|ZDA|FITB||
-Citizens Financial|ZDA|CFG||
-KeyCorp|ZDA|KEY||
-M&T Bank|ZDA|MTB||
-Regions Financial|ZDA|RF||
-Huntington|ZDA|HBAN||
-Northern Trust|ZDA|NTRS||
-State Street|ZDA|STT||
-Bank of New York Mellon|ZDA|BK||
-Raymond James|ZDA|RJF||
-Interactive Brokers|ZDA|IBKR||
-KKR|ZDA|KKR||
-Apollo Global|ZDA|APO||
-Ares Management|ZDA|ARES||
-Carlyle|ZDA|CG||
-T. Rowe Price|ZDA|TROW||
-Franklin Resources|ZDA|BEN||
-Invesco|ZDA|IVZ||
-Nasdaq|ZDA|NDAQ||
-Intercontinental Exchange|ZDA|ICE||
-CME Group|ZDA|CME||
-Cboe|ZDA|CBOE||
-Moody's|ZDA|MCO||
-MSCI|ZDA|MSCI||
-FactSet|ZDA|FDS||
-Fiserv|ZDA|FI||
-Fidelity National Info|ZDA|FIS||
-Global Payments|ZDA|GPN||
-Automatic Data Processing|ZDA|ADP||
-Paychex|ZDA|PAYX||
-Cintas|ZDA|CTAS||
-Waste Management|ZDA|WM||
-Republic Services|ZDA|RSG||
-Ecolab|ZDA|ECL||
-Sherwin-Williams|ZDA|SHW||
-PPG Industries|ZDA|PPG||
-Air Products|ZDA|APD||
-Dow|ZDA|DOW||
-DuPont|ZDA|DD||
-LyondellBasell|Nizozemska|LYB||
-Freeport-McMoRan|ZDA|FCX|FPMB.DE|
-Newmont|ZDA|NEM|NMM.DE|
-Nucor|ZDA|NUE||
-Steel Dynamics|ZDA|STLD||
-Vulcan Materials|ZDA|VMC||
-Martin Marietta|ZDA|MLM||
-Emerson Electric|ZDA|EMR||
-Eaton|Irska|ETN||
-Parker Hannifin|ZDA|PH||
-Illinois Tool Works|ZDA|ITW||
-Cummins|ZDA|CMI||
-Paccar|ZDA|PCAR||
-Rockwell Automation|ZDA|ROK||
-Dover|ZDA|DOV||
-Fastenal|ZDA|FAST||
-W.W. Grainger|ZDA|GWW||
-Trane Technologies|Irska|TT||
-Carrier|ZDA|CARR||
-Johnson Controls|Irska|JCI||
-Otis|ZDA|OTIS||
-Norfolk Southern|ZDA|NSC||
-CSX|ZDA|CSX||
-United Parcel Service|ZDA|UPS|UPAB.DE|
-FedEx|ZDA|FDX|FDX.DE|
-Delta Air Lines|ZDA|DAL||
-United Airlines|ZDA|UAL||
-Southwest Airlines|ZDA|LUV||
-General Motors|ZDA|GM|8GM.DE|
-Ford|ZDA|F|FMC1.DE|
-Aptiv|Irska|APTV||
-TJX|ZDA|TJX||
-Ross Stores|ZDA|ROST||
-Target|ZDA|TGT||
-Dollar General|ZDA|DG||
-Kroger|ZDA|KR||
-Sysco|ZDA|SYY||
-Mondelez|ZDA|MDLZ|KTF.DE|
-General Mills|ZDA|GIS||
-Kellanova|ZDA|K||
-Hershey|ZDA|HSY||
-Kraft Heinz|ZDA|KHC||
-Keurig Dr Pepper|ZDA|KDP||
-Monster Beverage|ZDA|MNST||
-Constellation Brands|ZDA|STZ||
-Altria|ZDA|MO||
-Colgate-Palmolive|ZDA|CL||
-Kimberly-Clark|ZDA|KMB||
-Estee Lauder|ZDA|EL||
-Church & Dwight|ZDA|CHD||
-Clorox|ZDA|CLX||
-McKesson|ZDA|MCK||
-Cencora|ZDA|COR||
-Cardinal Health|ZDA|CAH||
-Cigna|ZDA|CI||
-CVS Health|ZDA|CVS||
-Humana|ZDA|HUM||
-HCA Healthcare|ZDA|HCA||
-IQVIA|ZDA|IQV||
-Intuitive Surgical|ZDA|ISRG|IUS.DE|
-Boston Scientific|ZDA|BSX||
-Becton Dickinson|ZDA|BDX||
-Edwards Lifesciences|ZDA|EW||
-Zimmer Biomet|ZDA|ZBH||
-Baxter|ZDA|BAX||
-ResMed|ZDA|RMD||
-Dexcom|ZDA|DXCM||
-IDEXX|ZDA|IDXX||
-Zoetis|ZDA|ZTS||
-West Pharmaceutical|ZDA|WST||
-Agilent|ZDA|A||
-Waters|ZDA|WAT||
-Mettler-Toledo|ZDA|MTD||
-Illumina|ZDA|ILMN||
-Biogen|ZDA|BIIB||
-Amphenol|ZDA|APH||
-TE Connectivity|Švica|TEL||
-Corning|ZDA|GLW||
-Keysight|ZDA|KEYS||
-Garmin|Švica|GRMN||
-Motorola Solutions|ZDA|MSI||
-L3Harris|ZDA|LHX||
-TransDigm|ZDA|TDG||
-Howmet|ZDA|HWM||
-HP|ZDA|HPQ||
-Hewlett Packard Enterprise|ZDA|HPE||
-Dell Technologies|ZDA|DELL||
-Super Micro Computer|ZDA|SMCI||
-Western Digital|ZDA|WDC||
-Seagate|ZDA|STX||
-NetApp|ZDA|NTAP||
-Autodesk|ZDA|ADSK||
-Workday|ZDA|WDAY||
-Datadog|ZDA|DDOG||
-Fortinet|ZDA|FTNT||
-Roper|ZDA|ROP||
-Verisk|ZDA|VRSK||
-Equifax|ZDA|EFX||
-Gartner|ZDA|IT||
-Cognizant|ZDA|CTSH||
-Electronic Arts|ZDA|EA||
-Take-Two|ZDA|TTWO||
-Warner Bros Discovery|ZDA|WBD||
-Charter Communications|ZDA|CHTR||
-T-Mobile US|ZDA|TMUS||
-AT&T|ZDA|T|SOBA.DE|
-American Tower|ZDA|AMT||
-Prologis|ZDA|PLD||
-Equinix|ZDA|EQIX||
-Crown Castle|ZDA|CCI||
-Public Storage|ZDA|PSA||
-Simon Property|ZDA|SPG||
-Realty Income|ZDA|O||
-Welltower|ZDA|WELL||
-Digital Realty|ZDA|DLR||
-VICI Properties|ZDA|VICI||
-CBRE|ZDA|CBRE||
-Marriott|ZDA|MAR||
-Hilton|ZDA|HLT||
-Las Vegas Sands|ZDA|LVS||
-Royal Caribbean|ZDA|RCL||
-Chipotle|ZDA|CMG||
-Yum! Brands|ZDA|YUM||
-Darden|ZDA|DRI||
-DoorDash|ZDA|DASH||
-Lululemon|ZDA|LULU||
-O'Reilly Automotive|ZDA|ORLY||
-AutoZone|ZDA|AZO||
-Genuine Parts|ZDA|GPC||
-Tractor Supply|ZDA|TSCO||
-Lowe's|ZDA|LOW||
-Sherwin Williams|ZDA|SHW||
-D.R. Horton|ZDA|DHI||
-Lennar|ZDA|LEN||
-PulteGroup|ZDA|PHM||
-Weyerhaeuser|ZDA|WY||
-International Paper|ZDA|IP||
-Ball|ZDA|BALL||
-Amcor|Švica|AMCR||
-Corteva|ZDA|CTVA||
-Mosaic|ZDA|MOS||
-CF Industries|ZDA|CF||
-Albemarle|ZDA|ALB||
-Cheniere Energy|ZDA|LNG||
-Baker Hughes|ZDA|BKR||
-Halliburton|ZDA|HAL||
-Devon Energy|ZDA|DVN||
-Diamondback|ZDA|FANG||
-Hess|ZDA|HES||
-Expand Energy|ZDA|EXE||
-Texas Pacific Land|ZDA|TPL||
-Nestlé|Švica|NSRGY|NESN.SW|
-Novo Nordisk|Danska|NVO|NOVO-B.CO|
-ASML|Nizozemska|ASML|ASML.AS|
-LVMH|Francija|LVMUY|MC.PA|
-SAP|Nemčija|SAP|SAP.DE|
-AstraZeneca|Zdr. kraljestvo|AZN|AZN.L|
-Roche|Švica|RHHBY|ROG.SW|
-Novartis|Švica|NVS|NOVN.SW|
-Shell|Zdr. kraljestvo|SHEL|SHEL.L|
-HSBC|Zdr. kraljestvo|HSBC|HSBA.L|
-TotalEnergies|Francija|TTE|TTE.PA|
-Siemens|Nemčija|SIEGY|SIE.DE|
-Unilever|Zdr. kraljestvo|UL|ULVR.L|
-L'Oréal|Francija|LRLCY|OR.PA|
-Hermès|Francija|HESAY|RMS.PA|
-Schneider Electric|Francija|SBGSY|SU.PA|
-Allianz|Nemčija|ALIZY|ALV.DE|
-Airbus|Francija|EADSY|AIR.PA|
-Sanofi|Francija|SNY|SAN.PA|
-BP|Zdr. kraljestvo|BP|BP.L|
-Rio Tinto|Zdr. kraljestvo|RIO|RIO.L|RIO.AX
-BHP|Avstralija|BHP||BHP.AX
-Zurich Insurance|Švica|ZURVY|ZURN.SW|
-UBS|Švica|UBS|UBSG.SW|
-Banco Santander|Španija|SAN|SAN.MC|
-BBVA|Španija|BBVA|BBVA.MC|
-ING|Nizozemska|ING|INGA.AS|
-Deutsche Telekom|Nemčija|DTEGY|DTE.DE|
-Iberdrola|Španija|IBDRY|IBE.MC|
-Enel|Italija|ENLAY|ENEL.MI|
-Eni|Italija|E|ENI.MI|
-Intesa Sanpaolo|Italija|ISNPY|ISP.MI|
-UniCredit|Italija|UNCRY|UCG.MI|
-Ferrari|Italija|RACE|RACE.MI|
-Stellantis|Nizozemska|STLA|STLAM.MI|
-Prosus|Nizozemska|PROSY|PRX.AS|
-Anheuser-Busch InBev|Belgija|BUD|ABI.BR|
-Adyen|Nizozemska|ADYEY|ADYEN.AS|
-Munich Re|Nemčija|MURGY|MUV2.DE|
-BASF|Nemčija|BASFY|BAS.DE|
-Bayer|Nemčija|BAYRY|BAYN.DE|
-Mercedes-Benz|Nemčija|MBGYY|MBG.DE|
-BMW|Nemčija|BMWYY|BMW.DE|
-Volkswagen|Nemčija|VWAGY|VOW3.DE|
-Porsche AG|Nemčija||P911.DE|
-Deutsche Bank|Nemčija|DB|DBK.DE|
-Infineon|Nemčija|IFNNY|IFX.DE|
-adidas|Nemčija|ADDYY|ADS.DE|
-Deutsche Post DHL|Nemčija|DHLGY|DHL.DE|
-RWE|Nemčija|RWEOY|RWE.DE|
-E.ON|Nemčija|EONGY|EOAN.DE|
-Merck KGaA|Nemčija|MKKGY|MRK.DE|
-Henkel|Nemčija|HENKY|HEN3.DE|
-Beiersdorf|Nemčija|BDRFY|BEI.DE|
-Continental|Nemčija|CTTAY|CON.DE|
-Heidelberg Materials|Nemčija|HDELY|HEI.DE|
-Vonovia|Nemčija|VONOY|VNA.DE|
-Fresenius|Nemčija|FSNUY|FRE.DE|
-Symrise|Nemčija|SYIEY|SY1.DE|
-Brenntag|Nemčija|BNTGY|BNR.DE|
-Rheinmetall|Nemčija|RNMBY|RHM.DE|
-Siemens Energy|Nemčija|SMNEY|ENR.DE|
-Siemens Healthineers|Nemčija|SMMNY|SHL.DE|
-Zalando|Nemčija|ZLNDY|ZAL.DE|
-Hannover Re|Nemčija|HVRRY|HNR1.DE|
-Commerzbank|Nemčija|CRZBY|CBK.DE|
-MTU Aero Engines|Nemčija|MTUAY|MTX.DE|
-Daimler Truck|Nemčija|DTRUY|DTG.DE|
-Qiagen|Nizozemska|QGEN|QIA.DE|
-Deutsche Börse|Nemčija|DBOEY|DB1.DE|
-Puma|Nemčija|PMMAF|PUM.DE|
-Lufthansa|Nemčija|DLAKY|LHA.DE|
-Sartorius|Nemčija|SARTF|SRT3.DE|
-Evonik|Nemčija|EVKIY|EVK.DE|
-GSK|Zdr. kraljestvo|GSK|GSK.L|
-Diageo|Zdr. kraljestvo|DEO|DGE.L|
-RELX|Zdr. kraljestvo|RELX|REL.L|
-British American Tobacco|Zdr. kraljestvo|BTI|BATS.L|
-Reckitt Benckiser|Zdr. kraljestvo|RBGLY|RKT.L|
-National Grid|Zdr. kraljestvo|NGG|NG.L|
-Barclays|Zdr. kraljestvo|BCS|BARC.L|
-Lloyds Banking|Zdr. kraljestvo|LYG|LLOY.L|
-NatWest|Zdr. kraljestvo|NWG|NWG.L|
-Prudential plc|Zdr. kraljestvo|PUK|PRU.L|
-Rolls-Royce|Zdr. kraljestvo|RYCEY|RR.L|
-BAE Systems|Zdr. kraljestvo|BAESY|BA.L|
-Compass Group|Zdr. kraljestvo|CMPGY|CPG.L|
-Tesco|Zdr. kraljestvo|TSCDY|TSCO.L|
-Vodafone|Zdr. kraljestvo|VOD|VOD.L|
-Anglo American|Zdr. kraljestvo|NGLOY|AAL.L|
-Glencore|Švica|GLNCY|GLEN.L|
-Standard Chartered|Zdr. kraljestvo|SCBFF|STAN.L|
-Ashtead|Zdr. kraljestvo|ASHTY|AHT.L|
-Experian|Irska|EXPGY|EXPN.L|
-Haleon|Zdr. kraljestvo|HLN|HLN.L|
-Aviva|Zdr. kraljestvo|AVVIY|AV.L|
-Legal & General|Zdr. kraljestvo|LGGNY|LGEN.L|
-Imperial Brands|Zdr. kraljestvo|IMBBY|IMB.L|
-SSE|Zdr. kraljestvo|SSEZY|SSE.L|
-Smith & Nephew|Zdr. kraljestvo|SNN|SN.L|
-InterContinental Hotels|Zdr. kraljestvo|IHG|IHG.L|
-Sage Group|Zdr. kraljestvo|SGPYY|SGE.L|
-Ørsted|Danska|DNNGY|ORSTED.CO|
-DSV|Danska|DSDVY|DSV.CO|
-Vestas|Danska|VWDRY|VWS.CO|
-Novonesis|Danska|NVZMY|NSIS-B.CO|
-Genmab|Danska|GMAB|GMAB.CO|
-Coloplast|Danska|CLPBY|COLO-B.CO|
-Carlsberg|Danska|CABGY|CARL-B.CO|
-A.P. Møller-Mærsk|Danska|AMKBY|MAERSK-B.CO|
-Pandora|Danska|PANDY|PNDORA.CO|
-Atlas Copco|Švedska|ATLKY|ATCO-A.ST|
-Investor AB|Švedska|IVSXF|INVE-B.ST|
-Volvo|Švedska|VLVLY|VOLV-B.ST|
-Ericsson|Švedska|ERIC|ERIC-B.ST|
-Sandvik|Švedska|SDVKY|SAND.ST|
-Hexagon|Švedska|HXGBY|HEXA-B.ST|
-Assa Abloy|Švedska|ASAZY|ASSA-B.ST|
-SEB|Švedska|SVKEF|SEB-A.ST|
-Svenska Handelsbanken|Švedska|SVNLY|SHB-A.ST|
-Swedbank|Švedska|SWDBY|SWED-A.ST|
-EQT AB|Švedska|EQBBF|EQT.ST|
-Epiroc|Švedska|EPOKY|EPI-A.ST|
-Equinor|Norveška|EQNR|EQNR.OL|
-DNB Bank|Norveška|DNBBY|DNB.OL|
-Norsk Hydro|Norveška|NHYDY|NHY.OL|
-Aker BP|Norveška|AKRBF|AKRBP.OL|
-Telenor|Norveška|TELNY|TEL.OL|
-Nordea Bank|Finska|NRDBY|NDA-FI.HE|
-Nokia|Finska|NOK|NOKIA.HE|
-Kone|Finska|KNYJY|KNEBV.HE|
-Neste|Finska|NTOIY|NESTE.HE|
-Sampo|Finska|SAXPY|SAMPO.HE|
-UPM-Kymmene|Finska|UPMKY|UPM.HE|
-Richemont|Švica|CFRUY|CFR.SW|
-ABB|Švica|ABBNY|ABBN.SW|
-Holcim|Švica|HCMLY|HOLN.SW|
-Alcon|Švica|ALC|ALC.SW|
-Givaudan|Švica|GVDNY|GIVN.SW|
-Lonza|Švica|LZAGY|LONN.SW|
-Sika|Švica|SXYAY|SIKA.SW|
-Swiss Re|Švica|SSREY|SREN.SW|
-Partners Group|Švica|PGPHF|PGHN.SW|
-Geberit|Švica|GBERY|GEBN.SW|
-Kuehne + Nagel|Švica|KHNGY|KNIN.SW|
-Swisscom|Švica|SCMWY|SCMN.SW|
-Julius Bär|Švica|JBAXY|BAER.SW|
-Straumann|Švica|SAUHY|STMN.SW|
-Heineken|Nizozemska|HEINY|HEIA.AS|
-Ahold Delhaize|Nizozemska|ADRNY|AD.AS|
-Wolters Kluwer|Nizozemska|WTKWY|WKL.AS|
-Philips|Nizozemska|PHG|PHIA.AS|
-KPN|Nizozemska|KKPNY|KPN.AS|
-ArcelorMittal|Luksemburg|MT|MT.AS|
-Argenx|Belgija|ARGX|ARGX.BR|
-UCB|Belgija|UCBJY|UCB.BR|
-KBC Group|Belgija|KBCSY|KBC.BR|
-Solvay|Belgija|SVYSF|SOLB.BR|
-Umicore|Belgija|UMICY|UMI.BR|
-Inditex|Španija|IDEXY|ITX.MC|
-Repsol|Španija|REPYY|REP.MC|
-Telefónica|Španija|TEF|TEF.MC|
-Amadeus IT|Španija|AMADY|AMS.MC|
-Cellnex|Španija|CLNXF|CLNX.MC|
-Aena|Španija|ANNSF|AENA.MC|
-Endesa|Španija|ELEZY|ELE.MC|
-CaixaBank|Španija|CAIXY|CABK.MC|
-Ferrovial|Nizozemska|FER|FER.AS|
-Generali|Italija|ARZGY|G.MI|
-Prysmian|Italija|PRYMY|PRY.MI|
-Moncler|Italija|MONRF|MONC.MI|
-Terna|Italija|TERRF|TRN.MI|
-Snam|Italija|SNMRY|SRG.MI|
-Poste Italiane|Italija|PITAF|PST.MI|
-Leonardo|Italija|FINMY|LDO.MI|
-Banco BPM|Italija|BNCZF|BAMI.MI|
-Mediobanca|Italija|MDIBY|MB.MI|
-Campari|Italija|DVDCF|CPR.MI|
-Vinci|Francija|VCISY|DG.PA|
-Safran|Francija|SAFRY|SAF.PA|
-EssilorLuxottica|Francija|ESLOY|EL.PA|
-Air Liquide|Francija|AIQUY|AI.PA|
-Danone|Francija|DANOY|BN.PA|
-Pernod Ricard|Francija|PDRDY|RI.PA|
-Kering|Francija|PPRUY|KER.PA|
-BNP Paribas|Francija|BNPQY|BNP.PA|
-AXA|Francija|AXAHY|CS.PA|
-Crédit Agricole|Francija|CRARY|ACA.PA|
-Société Générale|Francija|SCGLY|GLE.PA|
-Michelin|Francija|MGDDY|ML.PA|
-Legrand|Francija|LGRVY|LR.PA|
-Capgemini|Francija|CGEMY|CAP.PA|
-Thales|Francija|THLLY|HO.PA|
-Orange|Francija|ORAN|ORA.PA|
-Engie|Francija|ENGIY|ENGI.PA|
-Saint-Gobain|Francija|CODYY|SGO.PA|
-Dassault Systèmes|Francija|DASTY|DSY.PA|
-Alstom|Francija|ALSMY|ALO.PA|
-Publicis|Francija|PUBGY|PUB.PA|
-Veolia|Francija|VEOEY|VIE.PA|
-Carrefour|Francija|CRRFY|CA.PA|
-Renault|Francija|RNLSY|RNO.PA|
-Bureau Veritas|Francija|BVRDF|BVI.PA|
-Bouygues|Francija|BOUYY|EN.PA|
-Erste Group|Avstrija|EBKDY|EBS.VI|
-OMV|Avstrija|OMVKY|OMV.VI|
-Verbund|Avstrija|OEZVY|VER.VI|
-voestalpine|Avstrija|VLPNY|VOE.VI|
-Raiffeisen Bank Intl|Avstrija|RAIFY|RBI.VI|
-Andritz|Avstrija|ADRZY|ANDR.VI|
-Wienerberger|Avstrija|WBRBY|WIE.VI|
-Vienna Insurance Group|Avstrija|VNRFY|VIG.VI|
-CEZ|Češka|CEZYY|CEZ.PR|
-PKO Bank Polski|Poljska|PSZKY|PKO.WA|
-PKN Orlen|Poljska|PSKOY|PKN.WA|
-Allegro|Poljska|ALEPF|ALE.WA|
-OTP Bank|Madžarska|OTPGY|OTP.BD|
-Richter Gedeon|Madžarska|GDRZF|RICHT.BD|
-MOL|Madžarska|MGYOY|MOL.BD|
-Taiwan Semiconductor|Tajvan|TSM||2330.TW
-Samsung Electronics|Južna Koreja|||005930.KS
-SK Hynix|Južna Koreja|||000660.KS
-Hyundai Motor|Južna Koreja|||005380.KS
-LG Energy Solution|Južna Koreja|||373220.KS
-Samsung Biologics|Južna Koreja|||207940.KS
-Kia|Južna Koreja|||000270.KS
-Naver|Južna Koreja|||035420.KS
-Celltrion|Južna Koreja|||068270.KS
-Toyota Motor|Japonska|TM|TOM.DE|7203.T
-Sony|Japonska|SONY|SON1.DE|6758.T
-Mitsubishi UFJ|Japonska|MUFG||8306.T
-Keyence|Japonska|||6861.T
-Hitachi|Japonska|HTHIY||6501.T
-Recruit Holdings|Japonska|RCRUY||6098.T
-SoftBank Group|Japonska|SFTBY||9984.T
-Fast Retailing|Japonska|FRCOY||9983.T
-Nintendo|Japonska|NTDOY||7974.T
-Honda Motor|Japonska|HMC||7267.T
-Sumitomo Mitsui|Japonska|SMFG||8316.T
-Mizuho Financial|Japonska|MFG||8411.T
-Tokyo Electron|Japonska|TOELY||8035.T
-Advantest|Japonska|ATEYY||6857.T
-Shin-Etsu Chemical|Japonska|SHECY||4063.T
-Daiichi Sankyo|Japonska|DSNKY||4568.T
-Takeda Pharmaceutical|Japonska|TAK||4502.T
-Canon|Japonska|CAJ||7751.T
-Panasonic|Japonska|PCRFY||6752.T
-Nippon Steel|Japonska|NPSCY||5401.T
-Mitsui & Co|Japonska|MITSY||8031.T
-Mitsubishi Corp|Japonska|MSBHF||8058.T
-ITOCHU|Japonska|ITOCY||8001.T
-Nippon Telegraph|Japonska|NTTYY||9432.T
-KDDI|Japonska|KDDIY||9433.T
-Denso|Japonska|DNZOY||6902.T
-Murata Manufacturing|Japonska|MRAAY||6981.T
-Fanuc|Japonska|FANUY||6954.T
-Komatsu|Japonska|KMTUY||6301.T
-Bridgestone|Japonska|BRDCY||5108.T
-Ajinomoto|Japonska|AJINY||2802.T
-Asahi Group|Japonska|ASBRF||2502.T
-Terumo|Japonska|TRUMY||4543.T
-Chugai Pharmaceutical|Japonska|CHGCY||4519.T
-Astellas Pharma|Japonska|ALPMY||4503.T
-Otsuka Holdings|Japonska|OTSKY||4578.T
-ORIX|Japonska|IX||8591.T
-Tokio Marine|Japonska|TKOMY||8766.T
-Tencent|Kitajska|TCEHY||0700.HK
-Alibaba|Kitajska|BABA||9988.HK
-Kweichow Moutai|Kitajska|||600519.SS
-ICBC|Kitajska|IDCBY||1398.HK
-China Construction Bank|Kitajska|CICHY||0939.HK
-Agricultural Bank of China|Kitajska|ACGBY||1288.HK
-Bank of China|Kitajska|BACHY||3988.HK
-China Mobile|Kitajska|CHLKF||0941.HK
-CNOOC|Kitajska|CEOHF||0883.HK
-PetroChina|Kitajska|PCCYF||0857.HK
-Ping An Insurance|Kitajska|PNGAY||2318.HK
-AIA Group|Hongkong|AAGIY||1299.HK
-Meituan|Kitajska|MPNGY||3690.HK
-Xiaomi|Kitajska|XIACY||1810.HK
-BYD|Kitajska|BYDDY||1211.HK
-CATL|Kitajska|||300750.SZ
-JD.com|Kitajska|JD||9618.HK
-NetEase|Kitajska|NTES||9999.HK
-Baidu|Kitajska|BIDU||9888.HK
-PDD Holdings|Kitajska|PDD||
-Hong Kong Exchanges|Hongkong|HKXCY||0388.HK
-China Merchants Bank|Kitajska|CIHKY||3968.HK
-SMIC|Kitajska|SMICY||0981.HK
-Li Auto|Kitajska|LI||2015.HK
-Trip.com|Kitajska|TCOM||9961.HK
-Reliance Industries|Indija|||RELIANCE.NS
-Tata Consultancy|Indija|||TCS.NS
-HDFC Bank|Indija|HDB||HDFCBANK.NS
-Infosys|Indija|INFY||INFY.NS
-ICICI Bank|Indija|IBN||ICICIBANK.NS
-Bharti Airtel|Indija|||BHARTIARTL.NS
-ITC|Indija|||ITC.NS
-Larsen & Toubro|Indija|||LT.NS
-State Bank of India|Indija|||SBIN.NS
-Hindustan Unilever|Indija|||HINDUNILVR.NS
-Bajaj Finance|Indija|||BAJFINANCE.NS
-Axis Bank|Indija|||AXISBANK.NS
-Maruti Suzuki|Indija|||MARUTI.NS
-Sun Pharmaceutical|Indija|||SUNPHARMA.NS
-Wipro|Indija|WIT||WIPRO.NS
-Royal Bank of Canada|Kanada|RY||RY.TO
-Toronto-Dominion Bank|Kanada|TD||TD.TO
-Enbridge|Kanada|ENB||ENB.TO
-Canadian National Railway|Kanada|CNI||CNR.TO
-Bank of Montreal|Kanada|BMO||BMO.TO
-Bank of Nova Scotia|Kanada|BNS||BNS.TO
-Brookfield Corp|Kanada|BN||BN.TO
-Canadian Pacific Kansas City|Kanada|CP||CP.TO
-Suncor Energy|Kanada|SU||SU.TO
-Barrick Mining|Kanada|B||ABX.TO
-Constellation Software|Kanada|CNSWF||CSU.TO
-Manulife|Kanada|MFC||MFC.TO
-TC Energy|Kanada|TRP||TRP.TO
-Nutrien|Kanada|NTR||NTR.TO
-Canadian Natural Resources|Kanada|CNQ||CNQ.TO
-Agnico Eagle|Kanada|AEM||AEM.TO
-Thomson Reuters|Kanada|TRI||TRI.TO
-Commonwealth Bank|Avstralija|CMWAY||CBA.AX
-CSL|Avstralija|CSLLY||CSL.AX
-National Australia Bank|Avstralija|NABZY||NAB.AX
-Westpac|Avstralija|WEBNF||WBC.AX
-ANZ Group|Avstralija|ANZGY||ANZ.AX
-Wesfarmers|Avstralija|WFAFY||WES.AX
-Macquarie Group|Avstralija|MQBKY||MQG.AX
-Fortescue|Avstralija|FSUMF||FMG.AX
-Woodside Energy|Avstralija|WDS||WDS.AX
-Goodman Group|Avstralija|GMGSF||GMG.AX
-Telstra|Avstralija|TLGPY||TLS.AX
-Woolworths Group|Avstralija|WOLZY||WOW.AX
-Aristocrat Leisure|Avstralija|ARLUF||ALL.AX
-Transurban|Avstralija|TRAUF||TCL.AX
-Petrobras|Brazilija|PBR||PETR4.SA
-Vale|Brazilija|VALE||VALE3.SA
-Itaú Unibanco|Brazilija|ITUB||ITUB4.SA
-Ambev|Brazilija|ABEV||ABEV3.SA
-Banco Bradesco|Brazilija|BBD||BBDC4.SA
-América Móvil|Mehika|AMX||AMXB.MX
-Walmart de México|Mehika|WMMVY||WALMEX.MX
-FEMSA|Mehika|FMX||FEMSAUBD.MX
-Grupo México|Mehika|GMBXF||GMEXICOB.MX
-Grupo Financiero Banorte|Mehika|GBOOY||GFNORTEO.MX
-Saudi Aramco|Savdska Arabija|||2222.SR
-Al Rajhi Bank|Savdska Arabija|||1120.SR
-SABIC|Savdska Arabija|||2010.SR
-Saudi Telecom|Savdska Arabija|||7010.SR
-Teva Pharmaceutical|Izrael|TEVA||TEVA.TA
-NICE|Izrael|NICE||NICE.TA
-Check Point|Izrael|CHKP||CHKP.TA
-Elbit Systems|Izrael|ESLT||ESLT.TA
-Naspers|Južna Afrika|NPSNY||
-Sasol|Južna Afrika|SSL||
-Gold Fields|Južna Afrika|GFI||
-Grab Holdings|Singapur|GRAB||
-Sea Limited|Singapur|SE||
-DBS Group|Singapur|DBSDY||D05.SI
-Coupang|Južna Koreja|CPNG||`;
+const RAW = `Apple|ZDA|AAPL|APC.DE||Tehnologija
+Microsoft|ZDA|MSFT|MSF.DE||Tehnologija
+NVIDIA|ZDA|NVDA|NVD.DE||Tehnologija
+Alphabet|ZDA|GOOGL|ABEA.DE||Tehnologija
+Amazon|ZDA|AMZN|AMZ.DE||Trošila
+Meta Platforms|ZDA|META|FB2A.DE||Tehnologija
+Broadcom|ZDA|AVGO|1YD.DE||Tehnologija
+Tesla|ZDA|TSLA|TL0.DE||Trošila
+Berkshire Hathaway|ZDA|BRK-B|BRYN.DE||Finance
+Eli Lilly|ZDA|LLY|LLY.DE||Zdravstvo
+JPMorgan Chase|ZDA|JPM|CMC.DE||Finance
+Visa|ZDA|V|3V64.DE||Finance
+Mastercard|ZDA|MA|M4I.DE||Finance
+Exxon Mobil|ZDA|XOM|XONA.DE||Energija
+UnitedHealth|ZDA|UNH|UNH.DE||Zdravstvo
+Costco|ZDA|COST|CTO.DE||Osnovne potrebščine
+Walmart|ZDA|WMT|WMT.DE||Osnovne potrebščine
+Johnson & Johnson|ZDA|JNJ|JNJ.DE||Zdravstvo
+Procter & Gamble|ZDA|PG|PRG.DE||Osnovne potrebščine
+Home Depot|ZDA|HD|HDI.DE||Trošila
+AbbVie|ZDA|ABBV|4AB.DE||Zdravstvo
+Netflix|ZDA|NFLX|NFC.DE||Komunikacije
+Coca-Cola|ZDA|KO|CCC3.DE||Osnovne potrebščine
+Merck|ZDA|MRK|6MK.DE||Zdravstvo
+Chevron|ZDA|CVX|CHV.DE||Energija
+Bank of America|ZDA|BAC|NCB.DE||Finance
+Salesforce|ZDA|CRM|FOO.DE||Tehnologija
+Advanced Micro Devices|ZDA|AMD|AMD.DE||Tehnologija
+PepsiCo|ZDA|PEP|PEP.DE||Osnovne potrebščine
+Adobe|ZDA|ADBE|ADB.DE||Tehnologija
+Linde|ZDA|LIN|LIN.DE||Osnovni materiali
+Thermo Fisher|ZDA|TMO|TMO.DE||Zdravstvo
+Cisco|ZDA|CSCO|CIS.DE||Tehnologija
+McDonald's|ZDA|MCD|MDO.DE||Trošila
+Accenture|ZDA|ACN|ACN.DE||Tehnologija
+Oracle|ZDA|ORCL|ORC.DE||Tehnologija
+Abbott|ZDA|ABT|ABL.DE||Zdravstvo
+Wells Fargo|ZDA|WFC|NWT.DE||Finance
+Walt Disney|ZDA|DIS|WDP.DE||Komunikacije
+General Electric|ZDA|GE|GCP.DE||Industrija
+Intel|ZDA|INTC|INL.DE||Tehnologija
+Qualcomm|ZDA|QCOM|QCI.DE||Tehnologija
+IBM|ZDA|IBM|IBM.DE||Tehnologija
+Caterpillar|ZDA|CAT|CAT1.DE||Industrija
+Verizon|ZDA|VZ|BAC.DE||Komunikacije
+Texas Instruments|ZDA|TXN|TII.DE||Tehnologija
+Amgen|ZDA|AMGN|AMG.DE||Zdravstvo
+Danaher|ZDA|DHR|DAA.DE||Zdravstvo
+Pfizer|ZDA|PFE|PFE.DE||Zdravstvo
+Comcast|ZDA|CMCSA|CTP2.DE||Komunikacije
+Philip Morris|ZDA|PM|4I1.DE||Osnovne potrebščine
+Intuit|ZDA|INTU|ITU.DE||Tehnologija
+ServiceNow|ZDA|NOW|4S0.DE||Tehnologija
+Uber|ZDA|UBER|UT8.DE||Trošila
+Palantir|ZDA|PLTR|PTX.DE||Tehnologija
+Boeing|ZDA|BA|BCO.DE||Industrija
+Nike|ZDA|NKE|NKE.DE||Trošila
+Starbucks|ZDA|SBUX|SRB.DE||Trošila
+Goldman Sachs|ZDA|GS|GOS.DE||Finance
+Morgan Stanley|ZDA|MS|DWD.DE||Finance
+American Express|ZDA|AXP|AEC1.DE||Finance
+3M|ZDA|MMM|MMM.DE||Industrija
+Micron|ZDA|MU|MTE.DE||Tehnologija
+Applied Materials|ZDA|AMAT|AP2.DE||Tehnologija
+Lam Research|ZDA|LRCX|LAM.DE||Tehnologija
+Booking Holdings|ZDA|BKNG|PCE1.DE||Trošila
+PayPal|ZDA|PYPL|2PP.DE||Finance
+Union Pacific|ZDA|UNP|UNP.DE||Industrija
+Honeywell|ZDA|HON|HON.DE||Industrija
+RTX|ZDA|RTX|RTN.DE||Industrija
+Lockheed Martin|ZDA|LMT|LOM.DE||Industrija
+S&P Global|ZDA|SPGI|MHP.DE||Finance
+Blackstone|ZDA|BX|4BS.DE||Finance
+BlackRock|ZDA|BLK|BLQA.DE||Finance
+Citigroup|ZDA|C|TRV.DE||Finance
+Charles Schwab|ZDA|SCHW|SWG.DE||Finance
+Elevance Health|ZDA|ELV|WP3.DE||Zdravstvo
+Stryker|ZDA|SYK|SYK.DE||Zdravstvo
+Medtronic|ZDA|MDT|MDT.DE||Zdravstvo
+Bristol-Myers Squibb|ZDA|BMY|BRM.DE||Zdravstvo
+Gilead|ZDA|GILD|GIS.DE||Zdravstvo
+Vertex|ZDA|VRTX|VX1.DE||Zdravstvo
+Regeneron|ZDA|REGN|RGB.DE||Zdravstvo
+Moderna|ZDA|MRNA|0QF.DE||Zdravstvo
+Analog Devices|ZDA|ADI|ANO.DE||Tehnologija
+KLA|ZDA|KLAC|KLA.DE||Tehnologija
+Synopsys|ZDA|SNPS|SNP.DE||Tehnologija
+Cadence|ZDA|CDNS|CDS.DE||Tehnologija
+Arista Networks|ZDA|ANET|4AT.DE||Tehnologija
+Palo Alto Networks|ZDA|PANW|5AP.DE||Tehnologija
+CrowdStrike|ZDA|CRWD|4S2.DE||Tehnologija
+Snowflake|ZDA|SNOW|5Q5.DE||Tehnologija
+Airbnb|ZDA|ABNB|9BN.DE||Trošila
+Coinbase|ZDA|COIN|1QZ.DE||Tehnologija
+Block|ZDA|XYZ|SQU.DE||Tehnologija
+Shopify|ZDA|SHOP|307.DE|9SHOP.TO|Tehnologija
+Spotify|Švedska|SPOT|R6H.DE||Komunikacije
+MercadoLibre|Argentina|MELI|MLB.DE||Tehnologija
+Marvell|ZDA|MRVL|91M.DE||Tehnologija
+NXP Semiconductors|Nizozemska|NXPI|VNX.DE||Tehnologija
+ON Semiconductor|ZDA|ON|XS4.DE||Tehnologija
+GE HealthCare|ZDA|GEHC|||Zdravstvo
+Northrop Grumman|ZDA|NOC|NTH.DE||Industrija
+General Dynamics|ZDA|GD|GDX.DE||Industrija
+Deere|ZDA|DE|DCO.DE||Industrija
+ConocoPhillips|ZDA|COP|YCP.DE||Energija
+EOG Resources|ZDA|EOG|EOG.DE||Energija
+Schlumberger|ZDA|SLB|SLB.DE||Energija
+Marathon Petroleum|ZDA|MPC|||Energija
+Phillips 66|ZDA|PSX|||Energija
+Valero|ZDA|VLO|||Energija
+Occidental|ZDA|OXY|OPC.DE||Energija
+Kinder Morgan|ZDA|KMI|||Energija
+Williams|ZDA|WMB|||Energija
+NextEra Energy|ZDA|NEE|NEX.DE||Oskrba
+Southern|ZDA|SO|||Oskrba
+Duke Energy|ZDA|DUK|||Oskrba
+Constellation Energy|ZDA|CEG|||Oskrba
+Vistra|ZDA|VST|||Oskrba
+Dominion|ZDA|D|||Oskrba
+American Electric Power|ZDA|AEP|||Oskrba
+Sempra|ZDA|SRE|||Oskrba
+Exelon|ZDA|EXC|||Oskrba
+Xcel Energy|ZDA|XEL|||Oskrba
+PG&E|ZDA|PCG|||Oskrba
+Edison International|ZDA|EIX|||Oskrba
+Public Service Enterprise|ZDA|PEG|||Oskrba
+WEC Energy|ZDA|WEC|||Oskrba
+Entergy|ZDA|ETR|||Oskrba
+DTE Energy|ZDA|DTE|||Oskrba
+Ameren|ZDA|AEE|||Oskrba
+FirstEnergy|ZDA|FE|||Oskrba
+PPL|ZDA|PPL|||Oskrba
+CenterPoint|ZDA|CNP|||Oskrba
+Alliant Energy|ZDA|LNT|||Oskrba
+Evergy|ZDA|EVRG|||Oskrba
+NRG Energy|ZDA|NRG|||Oskrba
+Progressive|ZDA|PGR|||Finance
+Chubb|ZDA|CB|||Finance
+Marsh McLennan|ZDA|MMC|||Finance
+Aon|ZDA|AON|||Finance
+Travelers|ZDA|TRV|||Finance
+Allstate|ZDA|ALL|||Finance
+MetLife|ZDA|MET|||Finance
+Prudential Financial|ZDA|PRU|||Finance
+Aflac|ZDA|AFL|||Finance
+AIG|ZDA|AIG|||Finance
+Hartford|ZDA|HIG|||Finance
+Arthur J. Gallagher|ZDA|AJG|||Finance
+Cincinnati Financial|ZDA|CINF|||Finance
+W. R. Berkley|ZDA|WRB|||Finance
+Arch Capital|ZDA|ACGL|||Finance
+Principal Financial|ZDA|PFG|||Finance
+Ameriprise|ZDA|AMP|||Finance
+Discover|ZDA|DFS|||Finance
+Capital One|ZDA|COF|||Finance
+Synchrony|ZDA|SYF|||Finance
+US Bancorp|ZDA|USB|||Finance
+PNC Financial|ZDA|PNC|||Finance
+Truist|ZDA|TFC|||Finance
+Fifth Third|ZDA|FITB|||Finance
+Citizens Financial|ZDA|CFG|||Finance
+KeyCorp|ZDA|KEY|||Finance
+M&T Bank|ZDA|MTB|||Finance
+Regions Financial|ZDA|RF|||Finance
+Huntington|ZDA|HBAN|||Finance
+Northern Trust|ZDA|NTRS|||Finance
+State Street|ZDA|STT|||Finance
+Bank of New York Mellon|ZDA|BK|||Finance
+Raymond James|ZDA|RJF|||Finance
+Interactive Brokers|ZDA|IBKR|||Finance
+KKR|ZDA|KKR|||Finance
+Apollo Global|ZDA|APO|||Finance
+Ares Management|ZDA|ARES|||Finance
+Carlyle|ZDA|CG|||Finance
+T. Rowe Price|ZDA|TROW|||Finance
+Franklin Resources|ZDA|BEN|||Finance
+Invesco|ZDA|IVZ|||Finance
+Nasdaq|ZDA|NDAQ|||Finance
+Intercontinental Exchange|ZDA|ICE|||Finance
+CME Group|ZDA|CME|||Finance
+Cboe|ZDA|CBOE|||Finance
+Moody's|ZDA|MCO|||Finance
+MSCI|ZDA|MSCI|||Finance
+FactSet|ZDA|FDS|||Finance
+Fiserv|ZDA|FI|||Tehnologija
+Fidelity National Info|ZDA|FIS|||Tehnologija
+Global Payments|ZDA|GPN|||Tehnologija
+Automatic Data Processing|ZDA|ADP|||Tehnologija
+Paychex|ZDA|PAYX|||Tehnologija
+Cintas|ZDA|CTAS|||Industrija
+Waste Management|ZDA|WM|||Industrija
+Republic Services|ZDA|RSG|||Industrija
+Ecolab|ZDA|ECL|||Osnovni materiali
+Sherwin-Williams|ZDA|SHW|||Osnovni materiali
+PPG Industries|ZDA|PPG|||Osnovni materiali
+Air Products|ZDA|APD|||Osnovni materiali
+Dow|ZDA|DOW|||Osnovni materiali
+DuPont|ZDA|DD|||Osnovni materiali
+LyondellBasell|Nizozemska|LYB|||Osnovni materiali
+Freeport-McMoRan|ZDA|FCX|FPMB.DE||Osnovni materiali
+Newmont|ZDA|NEM|NMM.DE||Osnovni materiali
+Nucor|ZDA|NUE|||Osnovni materiali
+Steel Dynamics|ZDA|STLD|||Osnovni materiali
+Vulcan Materials|ZDA|VMC|||Osnovni materiali
+Martin Marietta|ZDA|MLM|||Osnovni materiali
+Emerson Electric|ZDA|EMR|||Industrija
+Eaton|Irska|ETN|||Industrija
+Parker Hannifin|ZDA|PH|||Industrija
+Illinois Tool Works|ZDA|ITW|||Industrija
+Cummins|ZDA|CMI|||Industrija
+Paccar|ZDA|PCAR|||Industrija
+Rockwell Automation|ZDA|ROK|||Industrija
+Dover|ZDA|DOV|||Industrija
+Fastenal|ZDA|FAST|||Industrija
+W.W. Grainger|ZDA|GWW|||Industrija
+Trane Technologies|Irska|TT|||Industrija
+Carrier|ZDA|CARR|||Industrija
+Johnson Controls|Irska|JCI|||Industrija
+Otis|ZDA|OTIS|||Industrija
+Norfolk Southern|ZDA|NSC|||Industrija
+CSX|ZDA|CSX|||Industrija
+United Parcel Service|ZDA|UPS|UPAB.DE||Industrija
+FedEx|ZDA|FDX|FDX.DE||Industrija
+Delta Air Lines|ZDA|DAL|||Industrija
+United Airlines|ZDA|UAL|||Industrija
+Southwest Airlines|ZDA|LUV|||Industrija
+General Motors|ZDA|GM|8GM.DE||Trošila
+Ford|ZDA|F|FMC1.DE||Trošila
+Aptiv|Irska|APTV|||Trošila
+TJX|ZDA|TJX|||Trošila
+Ross Stores|ZDA|ROST|||Trošila
+Target|ZDA|TGT|||Trošila
+Dollar General|ZDA|DG|||Trošila
+Kroger|ZDA|KR|||Osnovne potrebščine
+Sysco|ZDA|SYY|||Osnovne potrebščine
+Mondelez|ZDA|MDLZ|KTF.DE||Osnovne potrebščine
+General Mills|ZDA|GIS|||Osnovne potrebščine
+Kellanova|ZDA|K|||Osnovne potrebščine
+Hershey|ZDA|HSY|||Osnovne potrebščine
+Kraft Heinz|ZDA|KHC|||Osnovne potrebščine
+Keurig Dr Pepper|ZDA|KDP|||Osnovne potrebščine
+Monster Beverage|ZDA|MNST|||Osnovne potrebščine
+Constellation Brands|ZDA|STZ|||Osnovne potrebščine
+Altria|ZDA|MO|||Osnovne potrebščine
+Colgate-Palmolive|ZDA|CL|||Osnovne potrebščine
+Kimberly-Clark|ZDA|KMB|||Osnovne potrebščine
+Estee Lauder|ZDA|EL|||Osnovne potrebščine
+Church & Dwight|ZDA|CHD|||Osnovne potrebščine
+Clorox|ZDA|CLX|||Osnovne potrebščine
+McKesson|ZDA|MCK|||Zdravstvo
+Cencora|ZDA|COR|||Zdravstvo
+Cardinal Health|ZDA|CAH|||Zdravstvo
+Cigna|ZDA|CI|||Zdravstvo
+CVS Health|ZDA|CVS|||Zdravstvo
+Humana|ZDA|HUM|||Zdravstvo
+HCA Healthcare|ZDA|HCA|||Zdravstvo
+IQVIA|ZDA|IQV|||Zdravstvo
+Intuitive Surgical|ZDA|ISRG|IUS.DE||Zdravstvo
+Boston Scientific|ZDA|BSX|||Zdravstvo
+Becton Dickinson|ZDA|BDX|||Zdravstvo
+Edwards Lifesciences|ZDA|EW|||Zdravstvo
+Zimmer Biomet|ZDA|ZBH|||Zdravstvo
+Baxter|ZDA|BAX|||Zdravstvo
+ResMed|ZDA|RMD|||Zdravstvo
+Dexcom|ZDA|DXCM|||Zdravstvo
+IDEXX|ZDA|IDXX|||Zdravstvo
+Zoetis|ZDA|ZTS|||Zdravstvo
+West Pharmaceutical|ZDA|WST|||Zdravstvo
+Agilent|ZDA|A|||Zdravstvo
+Waters|ZDA|WAT|||Zdravstvo
+Mettler-Toledo|ZDA|MTD|||Zdravstvo
+Illumina|ZDA|ILMN|||Zdravstvo
+Biogen|ZDA|BIIB|||Zdravstvo
+Amphenol|ZDA|APH|||Tehnologija
+TE Connectivity|Švica|TEL|||Tehnologija
+Corning|ZDA|GLW|||Tehnologija
+Keysight|ZDA|KEYS|||Tehnologija
+Garmin|Švica|GRMN|||Tehnologija
+Motorola Solutions|ZDA|MSI|||Tehnologija
+L3Harris|ZDA|LHX|||Industrija
+TransDigm|ZDA|TDG|||Industrija
+Howmet|ZDA|HWM|||Industrija
+HP|ZDA|HPQ|||Tehnologija
+Hewlett Packard Enterprise|ZDA|HPE|||Tehnologija
+Dell Technologies|ZDA|DELL|||Tehnologija
+Super Micro Computer|ZDA|SMCI|||Tehnologija
+Western Digital|ZDA|WDC|||Tehnologija
+Seagate|ZDA|STX|||Tehnologija
+NetApp|ZDA|NTAP|||Tehnologija
+Autodesk|ZDA|ADSK|||Tehnologija
+Workday|ZDA|WDAY|||Tehnologija
+Datadog|ZDA|DDOG|||Tehnologija
+Fortinet|ZDA|FTNT|||Tehnologija
+Roper|ZDA|ROP|||Industrija
+Verisk|ZDA|VRSK|||Industrija
+Equifax|ZDA|EFX|||Industrija
+Gartner|ZDA|IT|||Tehnologija
+Cognizant|ZDA|CTSH|||Tehnologija
+Electronic Arts|ZDA|EA|||Komunikacije
+Take-Two|ZDA|TTWO|||Komunikacije
+Warner Bros Discovery|ZDA|WBD|||Komunikacije
+Charter Communications|ZDA|CHTR|||Komunikacije
+T-Mobile US|ZDA|TMUS|||Komunikacije
+AT&T|ZDA|T|SOBA.DE||Komunikacije
+American Tower|ZDA|AMT|||Nepremičnine
+Prologis|ZDA|PLD|||Nepremičnine
+Equinix|ZDA|EQIX|||Nepremičnine
+Crown Castle|ZDA|CCI|||Nepremičnine
+Public Storage|ZDA|PSA|||Nepremičnine
+Simon Property|ZDA|SPG|||Nepremičnine
+Realty Income|ZDA|O|||Nepremičnine
+Welltower|ZDA|WELL|||Nepremičnine
+Digital Realty|ZDA|DLR|||Nepremičnine
+VICI Properties|ZDA|VICI|||Nepremičnine
+CBRE|ZDA|CBRE|||Nepremičnine
+Marriott|ZDA|MAR|||Trošila
+Hilton|ZDA|HLT|||Trošila
+Las Vegas Sands|ZDA|LVS|||Trošila
+Royal Caribbean|ZDA|RCL|||Trošila
+Chipotle|ZDA|CMG|||Trošila
+Yum! Brands|ZDA|YUM|||Trošila
+Darden|ZDA|DRI|||Trošila
+DoorDash|ZDA|DASH|||Trošila
+Lululemon|ZDA|LULU|||Trošila
+O'Reilly Automotive|ZDA|ORLY|||Trošila
+AutoZone|ZDA|AZO|||Trošila
+Genuine Parts|ZDA|GPC|||Trošila
+Tractor Supply|ZDA|TSCO|||Trošila
+Lowe's|ZDA|LOW|||Trošila
+Sherwin Williams|ZDA|SHW|||Osnovni materiali
+D.R. Horton|ZDA|DHI|||Trošila
+Lennar|ZDA|LEN|||Trošila
+PulteGroup|ZDA|PHM|||Trošila
+Weyerhaeuser|ZDA|WY|||Osnovni materiali
+International Paper|ZDA|IP|||Osnovni materiali
+Ball|ZDA|BALL|||Osnovni materiali
+Amcor|Švica|AMCR|||Osnovni materiali
+Corteva|ZDA|CTVA|||Osnovni materiali
+Mosaic|ZDA|MOS|||Osnovni materiali
+CF Industries|ZDA|CF|||Osnovni materiali
+Albemarle|ZDA|ALB|||Osnovni materiali
+Cheniere Energy|ZDA|LNG|||Energija
+Baker Hughes|ZDA|BKR|||Energija
+Halliburton|ZDA|HAL|||Energija
+Devon Energy|ZDA|DVN|||Energija
+Diamondback|ZDA|FANG|||Energija
+Hess|ZDA|HES|||Energija
+Expand Energy|ZDA|EXE|||Energija
+Texas Pacific Land|ZDA|TPL|||Energija
+Nestlé|Švica|NSRGY|NESN.SW||Osnovne potrebščine
+Novo Nordisk|Danska|NVO|NOVO-B.CO||Zdravstvo
+ASML|Nizozemska|ASML|ASML.AS||Tehnologija
+LVMH|Francija|LVMUY|MC.PA||Trošila
+SAP|Nemčija|SAP|SAP.DE||Tehnologija
+AstraZeneca|Zdr. kraljestvo|AZN|AZN.L||Zdravstvo
+Roche|Švica|RHHBY|ROG.SW||Zdravstvo
+Novartis|Švica|NVS|NOVN.SW||Zdravstvo
+Shell|Zdr. kraljestvo|SHEL|SHEL.L||Energija
+HSBC|Zdr. kraljestvo|HSBC|HSBA.L||Finance
+TotalEnergies|Francija|TTE|TTE.PA||Energija
+Siemens|Nemčija|SIEGY|SIE.DE||Industrija
+Unilever|Zdr. kraljestvo|UL|ULVR.L||Osnovne potrebščine
+L'Oréal|Francija|LRLCY|OR.PA||Trošila
+Hermès|Francija|HESAY|RMS.PA||Trošila
+Schneider Electric|Francija|SBGSY|SU.PA||Industrija
+Allianz|Nemčija|ALIZY|ALV.DE||Finance
+Airbus|Francija|EADSY|AIR.PA||Industrija
+Sanofi|Francija|SNY|SAN.PA||Zdravstvo
+BP|Zdr. kraljestvo|BP|BP.L||Energija
+Rio Tinto|Zdr. kraljestvo|RIO|RIO.L|RIO.AX|Osnovni materiali
+BHP|Avstralija|BHP||BHP.AX|Osnovni materiali
+Zurich Insurance|Švica|ZURVY|ZURN.SW||Finance
+UBS|Švica|UBS|UBSG.SW||Finance
+Banco Santander|Španija|SAN|SAN.MC||Finance
+BBVA|Španija|BBVA|BBVA.MC||Finance
+ING|Nizozemska|ING|INGA.AS||Finance
+Deutsche Telekom|Nemčija|DTEGY|DTE.DE||Komunikacije
+Iberdrola|Španija|IBDRY|IBE.MC||Oskrba
+Enel|Italija|ENLAY|ENEL.MI||Oskrba
+Eni|Italija|E|ENI.MI||Energija
+Intesa Sanpaolo|Italija|ISNPY|ISP.MI||Finance
+UniCredit|Italija|UNCRY|UCG.MI||Finance
+Ferrari|Italija|RACE|RACE.MI||Trošila
+Stellantis|Nizozemska|STLA|STLAM.MI||Trošila
+Prosus|Nizozemska|PROSY|PRX.AS||Tehnologija
+Anheuser-Busch InBev|Belgija|BUD|ABI.BR||Osnovne potrebščine
+Adyen|Nizozemska|ADYEY|ADYEN.AS||Tehnologija
+Munich Re|Nemčija|MURGY|MUV2.DE||Finance
+BASF|Nemčija|BASFY|BAS.DE||Osnovni materiali
+Bayer|Nemčija|BAYRY|BAYN.DE||Zdravstvo
+Mercedes-Benz|Nemčija|MBGYY|MBG.DE||Trošila
+BMW|Nemčija|BMWYY|BMW.DE||Trošila
+Volkswagen|Nemčija|VWAGY|VOW3.DE||Trošila
+Porsche AG|Nemčija||P911.DE||Trošila
+Deutsche Bank|Nemčija|DB|DBK.DE||Finance
+Infineon|Nemčija|IFNNY|IFX.DE||Tehnologija
+adidas|Nemčija|ADDYY|ADS.DE||Trošila
+Deutsche Post DHL|Nemčija|DHLGY|DHL.DE||Industrija
+RWE|Nemčija|RWEOY|RWE.DE||Oskrba
+E.ON|Nemčija|EONGY|EOAN.DE||Oskrba
+Merck KGaA|Nemčija|MKKGY|MRK.DE||Zdravstvo
+Henkel|Nemčija|HENKY|HEN3.DE||Osnovne potrebščine
+Beiersdorf|Nemčija|BDRFY|BEI.DE||Osnovne potrebščine
+Continental|Nemčija|CTTAY|CON.DE||Trošila
+Heidelberg Materials|Nemčija|HDELY|HEI.DE||Osnovni materiali
+Vonovia|Nemčija|VONOY|VNA.DE||Nepremičnine
+Fresenius|Nemčija|FSNUY|FRE.DE||Zdravstvo
+Symrise|Nemčija|SYIEY|SY1.DE||Osnovni materiali
+Brenntag|Nemčija|BNTGY|BNR.DE||Osnovni materiali
+Rheinmetall|Nemčija|RNMBY|RHM.DE||Industrija
+Siemens Energy|Nemčija|SMNEY|ENR.DE||Industrija
+Siemens Healthineers|Nemčija|SMMNY|SHL.DE||Zdravstvo
+Zalando|Nemčija|ZLNDY|ZAL.DE||Trošila
+Hannover Re|Nemčija|HVRRY|HNR1.DE||Finance
+Commerzbank|Nemčija|CRZBY|CBK.DE||Finance
+MTU Aero Engines|Nemčija|MTUAY|MTX.DE||Industrija
+Daimler Truck|Nemčija|DTRUY|DTG.DE||Industrija
+Qiagen|Nizozemska|QGEN|QIA.DE||Zdravstvo
+Deutsche Börse|Nemčija|DBOEY|DB1.DE||Finance
+Puma|Nemčija|PMMAF|PUM.DE||Trošila
+Lufthansa|Nemčija|DLAKY|LHA.DE||Industrija
+Sartorius|Nemčija|SARTF|SRT3.DE||Zdravstvo
+Evonik|Nemčija|EVKIY|EVK.DE||Osnovni materiali
+GSK|Zdr. kraljestvo|GSK|GSK.L||Zdravstvo
+Diageo|Zdr. kraljestvo|DEO|DGE.L||Osnovne potrebščine
+RELX|Zdr. kraljestvo|RELX|REL.L||Tehnologija
+British American Tobacco|Zdr. kraljestvo|BTI|BATS.L||Osnovne potrebščine
+Reckitt Benckiser|Zdr. kraljestvo|RBGLY|RKT.L||Osnovne potrebščine
+National Grid|Zdr. kraljestvo|NGG|NG.L||Oskrba
+Barclays|Zdr. kraljestvo|BCS|BARC.L||Finance
+Lloyds Banking|Zdr. kraljestvo|LYG|LLOY.L||Finance
+NatWest|Zdr. kraljestvo|NWG|NWG.L||Finance
+Prudential plc|Zdr. kraljestvo|PUK|PRU.L||Finance
+Rolls-Royce|Zdr. kraljestvo|RYCEY|RR.L||Industrija
+BAE Systems|Zdr. kraljestvo|BAESY|BA.L||Industrija
+Compass Group|Zdr. kraljestvo|CMPGY|CPG.L||Industrija
+Tesco|Zdr. kraljestvo|TSCDY|TSCO.L||Osnovne potrebščine
+Vodafone|Zdr. kraljestvo|VOD|VOD.L||Komunikacije
+Anglo American|Zdr. kraljestvo|NGLOY|AAL.L||Osnovni materiali
+Glencore|Švica|GLNCY|GLEN.L||Osnovni materiali
+Standard Chartered|Zdr. kraljestvo|SCBFF|STAN.L||Finance
+Ashtead|Zdr. kraljestvo|ASHTY|AHT.L||Industrija
+Experian|Irska|EXPGY|EXPN.L||Tehnologija
+Haleon|Zdr. kraljestvo|HLN|HLN.L||Zdravstvo
+Aviva|Zdr. kraljestvo|AVVIY|AV.L||Finance
+Legal & General|Zdr. kraljestvo|LGGNY|LGEN.L||Finance
+Imperial Brands|Zdr. kraljestvo|IMBBY|IMB.L||Osnovne potrebščine
+SSE|Zdr. kraljestvo|SSEZY|SSE.L||Oskrba
+Smith & Nephew|Zdr. kraljestvo|SNN|SN.L||Zdravstvo
+InterContinental Hotels|Zdr. kraljestvo|IHG|IHG.L||Trošila
+Sage Group|Zdr. kraljestvo|SGPYY|SGE.L||Tehnologija
+Ørsted|Danska|DNNGY|ORSTED.CO||Industrija
+DSV|Danska|DSDVY|DSV.CO||Industrija
+Vestas|Danska|VWDRY|VWS.CO||Industrija
+Novonesis|Danska|NVZMY|NSIS-B.CO||Zdravstvo
+Genmab|Danska|GMAB|GMAB.CO||Zdravstvo
+Coloplast|Danska|CLPBY|COLO-B.CO||Zdravstvo
+Carlsberg|Danska|CABGY|CARL-B.CO||Osnovne potrebščine
+A.P. Møller-Mærsk|Danska|AMKBY|MAERSK-B.CO||Industrija
+Pandora|Danska|PANDY|PNDORA.CO||Osnovne potrebščine
+Atlas Copco|Švedska|ATLKY|ATCO-A.ST||Industrija
+Investor AB|Švedska|IVSXF|INVE-B.ST||Finance
+Volvo|Švedska|VLVLY|VOLV-B.ST||Industrija
+Ericsson|Švedska|ERIC|ERIC-B.ST||Tehnologija
+Sandvik|Švedska|SDVKY|SAND.ST||Industrija
+Hexagon|Švedska|HXGBY|HEXA-B.ST||Tehnologija
+Assa Abloy|Švedska|ASAZY|ASSA-B.ST||Industrija
+SEB|Švedska|SVKEF|SEB-A.ST||Finance
+Svenska Handelsbanken|Švedska|SVNLY|SHB-A.ST||Finance
+Swedbank|Švedska|SWDBY|SWED-A.ST||Finance
+EQT AB|Švedska|EQBBF|EQT.ST||Finance
+Epiroc|Švedska|EPOKY|EPI-A.ST||Industrija
+Equinor|Norveška|EQNR|EQNR.OL||Energija
+DNB Bank|Norveška|DNBBY|DNB.OL||Finance
+Norsk Hydro|Norveška|NHYDY|NHY.OL||Osnovni materiali
+Aker BP|Norveška|AKRBF|AKRBP.OL||Energija
+Telenor|Norveška|TELNY|TEL.OL||Komunikacije
+Nordea Bank|Finska|NRDBY|NDA-FI.HE||Finance
+Nokia|Finska|NOK|NOKIA.HE||Tehnologija
+Kone|Finska|KNYJY|KNEBV.HE||Industrija
+Neste|Finska|NTOIY|NESTE.HE||Energija
+Sampo|Finska|SAXPY|SAMPO.HE||Finance
+UPM-Kymmene|Finska|UPMKY|UPM.HE||Osnovni materiali
+Richemont|Švica|CFRUY|CFR.SW||Trošila
+ABB|Švica|ABBNY|ABBN.SW||Industrija
+Holcim|Švica|HCMLY|HOLN.SW||Osnovni materiali
+Alcon|Švica|ALC|ALC.SW||Zdravstvo
+Givaudan|Švica|GVDNY|GIVN.SW||Osnovni materiali
+Lonza|Švica|LZAGY|LONN.SW||Zdravstvo
+Sika|Švica|SXYAY|SIKA.SW||Osnovni materiali
+Swiss Re|Švica|SSREY|SREN.SW||Finance
+Partners Group|Švica|PGPHF|PGHN.SW||Finance
+Geberit|Švica|GBERY|GEBN.SW||Industrija
+Kuehne + Nagel|Švica|KHNGY|KNIN.SW||Industrija
+Swisscom|Švica|SCMWY|SCMN.SW||Komunikacije
+Julius Bär|Švica|JBAXY|BAER.SW||Finance
+Straumann|Švica|SAUHY|STMN.SW||Zdravstvo
+Heineken|Nizozemska|HEINY|HEIA.AS||Osnovne potrebščine
+Ahold Delhaize|Nizozemska|ADRNY|AD.AS||Osnovne potrebščine
+Wolters Kluwer|Nizozemska|WTKWY|WKL.AS||Tehnologija
+Philips|Nizozemska|PHG|PHIA.AS||Zdravstvo
+KPN|Nizozemska|KKPNY|KPN.AS||Komunikacije
+ArcelorMittal|Luksemburg|MT|MT.AS||Osnovni materiali
+Argenx|Belgija|ARGX|ARGX.BR||Zdravstvo
+UCB|Belgija|UCBJY|UCB.BR||Zdravstvo
+KBC Group|Belgija|KBCSY|KBC.BR||Finance
+Solvay|Belgija|SVYSF|SOLB.BR||Osnovni materiali
+Umicore|Belgija|UMICY|UMI.BR||Osnovni materiali
+Inditex|Španija|IDEXY|ITX.MC||Trošila
+Repsol|Španija|REPYY|REP.MC||Energija
+Telefónica|Španija|TEF|TEF.MC||Komunikacije
+Amadeus IT|Španija|AMADY|AMS.MC||Tehnologija
+Cellnex|Španija|CLNXF|CLNX.MC||Komunikacije
+Aena|Španija|ANNSF|AENA.MC||Industrija
+Endesa|Španija|ELEZY|ELE.MC||Oskrba
+CaixaBank|Španija|CAIXY|CABK.MC||Finance
+Ferrovial|Nizozemska|FER|FER.AS||Industrija
+Generali|Italija|ARZGY|G.MI||Finance
+Prysmian|Italija|PRYMY|PRY.MI||Osnovni materiali
+Moncler|Italija|MONRF|MONC.MI||Trošila
+Terna|Italija|TERRF|TRN.MI||Oskrba
+Snam|Italija|SNMRY|SRG.MI||Oskrba
+Poste Italiane|Italija|PITAF|PST.MI||Finance
+Leonardo|Italija|FINMY|LDO.MI||Industrija
+Banco BPM|Italija|BNCZF|BAMI.MI||Finance
+Mediobanca|Italija|MDIBY|MB.MI||Finance
+Campari|Italija|DVDCF|CPR.MI||Osnovne potrebščine
+Vinci|Francija|VCISY|DG.PA||Industrija
+Safran|Francija|SAFRY|SAF.PA||Industrija
+EssilorLuxottica|Francija|ESLOY|EL.PA||Trošila
+Air Liquide|Francija|AIQUY|AI.PA||Osnovni materiali
+Danone|Francija|DANOY|BN.PA||Osnovne potrebščine
+Pernod Ricard|Francija|PDRDY|RI.PA||Osnovne potrebščine
+Kering|Francija|PPRUY|KER.PA||Trošila
+BNP Paribas|Francija|BNPQY|BNP.PA||Finance
+AXA|Francija|AXAHY|CS.PA||Finance
+Crédit Agricole|Francija|CRARY|ACA.PA||Finance
+Société Générale|Francija|SCGLY|GLE.PA||Finance
+Michelin|Francija|MGDDY|ML.PA||Trošila
+Legrand|Francija|LGRVY|LR.PA||Industrija
+Capgemini|Francija|CGEMY|CAP.PA||Tehnologija
+Thales|Francija|THLLY|HO.PA||Industrija
+Orange|Francija|ORAN|ORA.PA||Komunikacije
+Engie|Francija|ENGIY|ENGI.PA||Oskrba
+Saint-Gobain|Francija|CODYY|SGO.PA||Industrija
+Dassault Systèmes|Francija|DASTY|DSY.PA||Tehnologija
+Alstom|Francija|ALSMY|ALO.PA||Industrija
+Publicis|Francija|PUBGY|PUB.PA||Komunikacije
+Veolia|Francija|VEOEY|VIE.PA||Oskrba
+Carrefour|Francija|CRRFY|CA.PA||Osnovne potrebščine
+Renault|Francija|RNLSY|RNO.PA||Trošila
+Bureau Veritas|Francija|BVRDF|BVI.PA||Industrija
+Bouygues|Francija|BOUYY|EN.PA||Industrija
+Erste Group|Avstrija|EBKDY|EBS.VI||Finance
+OMV|Avstrija|OMVKY|OMV.VI||Energija
+Verbund|Avstrija|OEZVY|VER.VI||Oskrba
+voestalpine|Avstrija|VLPNY|VOE.VI||Osnovni materiali
+Raiffeisen Bank Intl|Avstrija|RAIFY|RBI.VI||Finance
+Andritz|Avstrija|ADRZY|ANDR.VI||Industrija
+Wienerberger|Avstrija|WBRBY|WIE.VI||Osnovni materiali
+Vienna Insurance Group|Avstrija|VNRFY|VIG.VI||Finance
+CEZ|Češka|CEZYY|CEZ.PR||Industrija
+PKO Bank Polski|Poljska|PSZKY|PKO.WA||Finance
+PKN Orlen|Poljska|PSKOY|PKN.WA||Energija
+Allegro|Poljska|ALEPF|ALE.WA||Trošila
+OTP Bank|Madžarska|OTPGY|OTP.BD||Finance
+Richter Gedeon|Madžarska|GDRZF|RICHT.BD||Zdravstvo
+MOL|Madžarska|MGYOY|MOL.BD||Energija
+Taiwan Semiconductor|Tajvan|TSM||2330.TW|Tehnologija
+Samsung Electronics|Južna Koreja|||005930.KS|Tehnologija
+SK Hynix|Južna Koreja|||000660.KS|Tehnologija
+Hyundai Motor|Južna Koreja|||005380.KS|Trošila
+LG Energy Solution|Južna Koreja|||373220.KS|Trošila
+Samsung Biologics|Južna Koreja|||207940.KS|Zdravstvo
+Kia|Južna Koreja|||000270.KS|Trošila
+Naver|Južna Koreja|||035420.KS|Tehnologija
+Celltrion|Južna Koreja|||068270.KS|Zdravstvo
+Toyota Motor|Japonska|TM|TOM.DE|7203.T|Trošila
+Sony|Japonska|SONY|SON1.DE|6758.T|Tehnologija
+Mitsubishi UFJ|Japonska|MUFG||8306.T|Finance
+Keyence|Japonska|||6861.T|Tehnologija
+Hitachi|Japonska|HTHIY||6501.T|Industrija
+Recruit Holdings|Japonska|RCRUY||6098.T|Tehnologija
+SoftBank Group|Japonska|SFTBY||9984.T|Tehnologija
+Fast Retailing|Japonska|FRCOY||9983.T|Osnovne potrebščine
+Nintendo|Japonska|NTDOY||7974.T|Komunikacije
+Honda Motor|Japonska|HMC||7267.T|Trošila
+Sumitomo Mitsui|Japonska|SMFG||8316.T|Finance
+Mizuho Financial|Japonska|MFG||8411.T|Finance
+Tokyo Electron|Japonska|TOELY||8035.T|Tehnologija
+Advantest|Japonska|ATEYY||6857.T|Tehnologija
+Shin-Etsu Chemical|Japonska|SHECY||4063.T|Osnovni materiali
+Daiichi Sankyo|Japonska|DSNKY||4568.T|Zdravstvo
+Takeda Pharmaceutical|Japonska|TAK||4502.T|Zdravstvo
+Canon|Japonska|CAJ||7751.T|Tehnologija
+Panasonic|Japonska|PCRFY||6752.T|Tehnologija
+Nippon Steel|Japonska|NPSCY||5401.T|Osnovni materiali
+Mitsui & Co|Japonska|MITSY||8031.T|Industrija
+Mitsubishi Corp|Japonska|MSBHF||8058.T|Industrija
+ITOCHU|Japonska|ITOCY||8001.T|Industrija
+Nippon Telegraph|Japonska|NTTYY||9432.T|Komunikacije
+KDDI|Japonska|KDDIY||9433.T|Komunikacije
+Denso|Japonska|DNZOY||6902.T|Industrija
+Murata Manufacturing|Japonska|MRAAY||6981.T|Tehnologija
+Fanuc|Japonska|FANUY||6954.T|Tehnologija
+Komatsu|Japonska|KMTUY||6301.T|Industrija
+Bridgestone|Japonska|BRDCY||5108.T|Industrija
+Ajinomoto|Japonska|AJINY||2802.T|Osnovne potrebščine
+Asahi Group|Japonska|ASBRF||2502.T|Osnovne potrebščine
+Terumo|Japonska|TRUMY||4543.T|Zdravstvo
+Chugai Pharmaceutical|Japonska|CHGCY||4519.T|Zdravstvo
+Astellas Pharma|Japonska|ALPMY||4503.T|Zdravstvo
+Otsuka Holdings|Japonska|OTSKY||4578.T|Zdravstvo
+ORIX|Japonska|IX||8591.T|Finance
+Tokio Marine|Japonska|TKOMY||8766.T|Finance
+Tencent|Kitajska|TCEHY||0700.HK|Komunikacije
+Alibaba|Kitajska|BABA||9988.HK|Trošila
+Kweichow Moutai|Kitajska|||600519.SS|Osnovne potrebščine
+ICBC|Kitajska|IDCBY||1398.HK|Finance
+China Construction Bank|Kitajska|CICHY||0939.HK|Finance
+Agricultural Bank of China|Kitajska|ACGBY||1288.HK|Finance
+Bank of China|Kitajska|BACHY||3988.HK|Finance
+China Mobile|Kitajska|CHLKF||0941.HK|Komunikacije
+CNOOC|Kitajska|CEOHF||0883.HK|Energija
+PetroChina|Kitajska|PCCYF||0857.HK|Energija
+Ping An Insurance|Kitajska|PNGAY||2318.HK|Finance
+AIA Group|Hongkong|AAGIY||1299.HK|Finance
+Meituan|Kitajska|MPNGY||3690.HK|Trošila
+Xiaomi|Kitajska|XIACY||1810.HK|Tehnologija
+BYD|Kitajska|BYDDY||1211.HK|Trošila
+CATL|Kitajska|||300750.SZ|Industrija
+JD.com|Kitajska|JD||9618.HK|Trošila
+NetEase|Kitajska|NTES||9999.HK|Komunikacije
+Baidu|Kitajska|BIDU||9888.HK|Tehnologija
+PDD Holdings|Kitajska|PDD|||Trošila
+Hong Kong Exchanges|Hongkong|HKXCY||0388.HK|Finance
+China Merchants Bank|Kitajska|CIHKY||3968.HK|Finance
+SMIC|Kitajska|SMICY||0981.HK|Tehnologija
+Li Auto|Kitajska|LI||2015.HK|Trošila
+Trip.com|Kitajska|TCOM||9961.HK|Trošila
+Reliance Industries|Indija|||RELIANCE.NS|Trošila
+Tata Consultancy|Indija|||TCS.NS|Tehnologija
+HDFC Bank|Indija|HDB||HDFCBANK.NS|Finance
+Infosys|Indija|INFY||INFY.NS|Tehnologija
+ICICI Bank|Indija|IBN||ICICIBANK.NS|Finance
+Bharti Airtel|Indija|||BHARTIARTL.NS|Komunikacije
+ITC|Indija|||ITC.NS|Osnovne potrebščine
+Larsen & Toubro|Indija|||LT.NS|Industrija
+State Bank of India|Indija|||SBIN.NS|Finance
+Hindustan Unilever|Indija|||HINDUNILVR.NS|Osnovne potrebščine
+Bajaj Finance|Indija|||BAJFINANCE.NS|Finance
+Axis Bank|Indija|||AXISBANK.NS|Finance
+Maruti Suzuki|Indija|||MARUTI.NS|Trošila
+Sun Pharmaceutical|Indija|||SUNPHARMA.NS|Zdravstvo
+Wipro|Indija|WIT||WIPRO.NS|Tehnologija
+Royal Bank of Canada|Kanada|RY||RY.TO|Finance
+Toronto-Dominion Bank|Kanada|TD||TD.TO|Finance
+Enbridge|Kanada|ENB||ENB.TO|Energija
+Canadian National Railway|Kanada|CNI||CNR.TO|Industrija
+Bank of Montreal|Kanada|BMO||BMO.TO|Finance
+Bank of Nova Scotia|Kanada|BNS||BNS.TO|Finance
+Brookfield Corp|Kanada|BN||BN.TO|Finance
+Canadian Pacific Kansas City|Kanada|CP||CP.TO|Industrija
+Suncor Energy|Kanada|SU||SU.TO|Energija
+Barrick Mining|Kanada|B||ABX.TO|Osnovni materiali
+Constellation Software|Kanada|CNSWF||CSU.TO|Tehnologija
+Manulife|Kanada|MFC||MFC.TO|Finance
+TC Energy|Kanada|TRP||TRP.TO|Energija
+Nutrien|Kanada|NTR||NTR.TO|Osnovni materiali
+Canadian Natural Resources|Kanada|CNQ||CNQ.TO|Energija
+Agnico Eagle|Kanada|AEM||AEM.TO|Osnovni materiali
+Thomson Reuters|Kanada|TRI||TRI.TO|Industrija
+Commonwealth Bank|Avstralija|CMWAY||CBA.AX|Finance
+CSL|Avstralija|CSLLY||CSL.AX|Zdravstvo
+National Australia Bank|Avstralija|NABZY||NAB.AX|Finance
+Westpac|Avstralija|WEBNF||WBC.AX|Finance
+ANZ Group|Avstralija|ANZGY||ANZ.AX|Finance
+Wesfarmers|Avstralija|WFAFY||WES.AX|Trošila
+Macquarie Group|Avstralija|MQBKY||MQG.AX|Finance
+Fortescue|Avstralija|FSUMF||FMG.AX|Osnovni materiali
+Woodside Energy|Avstralija|WDS||WDS.AX|Energija
+Goodman Group|Avstralija|GMGSF||GMG.AX|Nepremičnine
+Telstra|Avstralija|TLGPY||TLS.AX|Komunikacije
+Woolworths Group|Avstralija|WOLZY||WOW.AX|Trošila
+Aristocrat Leisure|Avstralija|ARLUF||ALL.AX|Industrija
+Transurban|Avstralija|TRAUF||TCL.AX|Industrija
+Petrobras|Brazilija|PBR||PETR4.SA|Energija
+Vale|Brazilija|VALE||VALE3.SA|Osnovni materiali
+Itaú Unibanco|Brazilija|ITUB||ITUB4.SA|Finance
+Ambev|Brazilija|ABEV||ABEV3.SA|Osnovne potrebščine
+Banco Bradesco|Brazilija|BBD||BBDC4.SA|Finance
+América Móvil|Mehika|AMX||AMXB.MX|Komunikacije
+Walmart de México|Mehika|WMMVY||WALMEX.MX|Osnovne potrebščine
+FEMSA|Mehika|FMX||FEMSAUBD.MX|Osnovne potrebščine
+Grupo México|Mehika|GMBXF||GMEXICOB.MX|Osnovni materiali
+Grupo Financiero Banorte|Mehika|GBOOY||GFNORTEO.MX|Finance
+Saudi Aramco|Savdska Arabija|||2222.SR|Energija
+Al Rajhi Bank|Savdska Arabija|||1120.SR|Finance
+SABIC|Savdska Arabija|||2010.SR|Osnovni materiali
+Saudi Telecom|Savdska Arabija|||7010.SR|Komunikacije
+Teva Pharmaceutical|Izrael|TEVA||TEVA.TA|Zdravstvo
+NICE|Izrael|NICE||NICE.TA|Tehnologija
+Check Point|Izrael|CHKP||CHKP.TA|Tehnologija
+Elbit Systems|Izrael|ESLT||ESLT.TA|Industrija
+Naspers|Južna Afrika|NPSNY|||Osnovne potrebščine
+Sasol|Južna Afrika|SSL|||Osnovni materiali
+Gold Fields|Južna Afrika|GFI|||Osnovni materiali
+Grab Holdings|Singapur|GRAB|||Tehnologija
+Sea Limited|Singapur|SE|||Komunikacije
+DBS Group|Singapur|DBSDY||D05.SI|Finance
+Coupang|Južna Koreja|CPNG|||Tehnologija`;
 
 const EVROPA = new Set(['Nemčija','Francija','Zdr. kraljestvo','Švica','Italija','Nizozemska','Švedska','Španija','Danska','Avstrija','Finska','Belgija','Norveška','Irska','Luksemburg','Poljska','Madžarska','Češka','Portugalska']);
 const AZIJA  = new Set(['Japonska','Kitajska','Indija','Južna Koreja','Tajvan','Hongkong','Singapur','Izrael','Savdska Arabija']);
@@ -1017,12 +1017,12 @@ function venueName(sym){
 }
 
 const COMPANIES = RAW.trim().split('\n').map(line => {
-  const [name, country, us, eu, home] = line.split('|');
+  const [name, country, us, eu, home, sector] = line.split('|');
   const listings = [];
   if(us)   listings.push({slot:'zda', sym:us,   reg:'ZDA',    city:venueName(us),   venue:'ZDA · ' + venueName(us)});
   if(eu)   listings.push({slot:'eu',  sym:eu,   reg:'Evropa',  city:venueName(eu),   venue:'Evropa · ' + venueName(eu)});
   if(home) listings.push({slot:'dom', sym:home, reg:'Domača',  city:venueName(home), venue:'Domača · ' + venueName(home)});
-  return {name, country, listings, region:
+  return {name, country, sector: sector || '', listings, region:
     EVROPA.has(country) ? 'evropa' : SEVERNA.has(country) ? 'severna' :
     AZIJA.has(country) ? 'azija' : 'ostalo'};
 }).filter(c => c.listings.length);
@@ -1747,7 +1747,7 @@ function divHTML(c){
   const cur = d && d.cur ? d.cur : '';
   return `<div class="dv">
     <span class="y">${yieldPct != null ? fmt(yieldPct,2) + ' %' : '-'}</span>
-    <span class="a">${fmt(ttm, ttm < 10 ? 2 : 2)} ${cur} letno</span></div>`;
+    <span class="a">${fmt(ttm, 2)} ${cur}</span></div>`;
 }
 
 /* Pri zelo velikih donosih je odstotek nepregleden (+14.945,9 %),
@@ -1821,7 +1821,8 @@ function filtered(){
   const q = qEl.value.trim().toLowerCase();
   let arr = groupList();
   if(q) arr = arr.filter(c => c.name.toLowerCase().includes(q) ||
-    c.listings.some(l => l.sym.toLowerCase().includes(q)) || c.country.toLowerCase().includes(q));
+    c.listings.some(l => l.sym.toLowerCase().includes(q)) ||
+    c.country.toLowerCase().includes(q) || (c.sector||'').toLowerCase().includes(q));
   const s = sortEl.value;
   if(s === 'cap'){
     return [...arr].sort((a,b) => {
@@ -1921,7 +1922,7 @@ function render(){
         ${FAVORITES.has(c.key) ? '★' : '☆'}</button>
       <div class="ident">
         <div class="nm">${c.name}</div>
-        <div class="co">${c.country}${capLabel(c)}</div>
+        <div class="co">${c.country}${c.sector ? ' · ' + c.sector : ''}${capLabel(c)}</div>
         ${divHTML(c)}
       </div>
       <div class="quotes">${c.listings.map(quoteHTML).join('')}</div>
@@ -2165,7 +2166,7 @@ function openDetail(c){
   overlay.classList.add('show');
   document.getElementById('mTitle').textContent = c.name;
   document.getElementById('mMeta').textContent =
-    `${c.country} · ${c.listings.length} ${c.listings.length===1?'kotacija':'kotacije'}`;
+    `${c.country}${c.sector ? ' · ' + c.sector : ''} · ${c.listings.length} ${c.listings.length===1?'kotacija':'kotacije'}`;
   document.getElementById('venues').innerHTML = c.listings.map((l,i) => {
     const d = cache.get(l.sym);
     const up = d && !d.error ? d.pct >= 0 : true;
