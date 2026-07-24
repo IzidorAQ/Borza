@@ -1458,7 +1458,7 @@ async function getChart(sym, range='1d', interval='5m', prepost=false, events=fa
   return res;
 }
 
-function parseQuote(sym, res, expectName){
+function parseQuote(sym, res, expectName, expectCheck){
   const m = res.meta || {}, ts = res.timestamp || [];
   const cl = res.indicators?.quote?.[0]?.close || [];
   const pts = [];
@@ -1503,7 +1503,7 @@ function parseQuote(sym, res, expectName){
     vol: m.regularMarketVolume,
     wk52h: m.fiftyTwoWeekHigh, wk52l: m.fiftyTwoWeekLow,
     tz: m.exchangeTimezoneName || '',
-    mismatch: nameMismatch(expectName, srcName),
+    mismatch: expectCheck ? nameMismatch(expectName, srcName) : false,
     spark: (regPts.length ? regPts : pts).slice(-40).map(p => p.v),
     ts: Date.now()
   };
@@ -1530,7 +1530,7 @@ async function loadQuotes(jobs, onEach){
     while(queue.length){
       const j = queue.shift();
       try{
-        cache.set(j.sym, parseQuote(j.sym, await getChart(j.sym,'1d','5m',true), j.name));
+        cache.set(j.sym, parseQuote(j.sym, await getChart(j.sym,'1d','5m',true), j.name, j.check));
         netOk++;
       }catch(e){
         cache.set(j.sym, {sym:j.sym, error:true, ts:Date.now()});
@@ -1955,7 +1955,11 @@ function render(){
     `${arr.length ? page*perPage+1 : 0}–${Math.min(arr.length,(page+1)*perPage)} od ${arr.length}`;
 
   const jobs = [];
-  slice.forEach(c => c.listings.forEach(l => jobs.push({sym:l.sym, name:c.name})));
+  const checkableRegions = new Set(['evropa','severna','azija','ostalo']);
+  slice.forEach(c => c.listings.forEach(l => jobs.push({
+    sym: l.sym, name: c.name,
+    check: checkableRegions.has(c.region) && c.listings.length > 1
+  })));
   loadQuotes(jobs, repaint);
 
   /* Zgodovina za donose: samo za matično kotacijo vsake vidne kartice
@@ -2437,7 +2441,7 @@ const TAPE = [['^GSPC','S&P 500'],['^NDX','Nasdaq 100'],['^GDAXI','DAX'],['^STOX
   ['CL=F','WTI'],['NG=F','Plin'],['EURUSD=X','EUR/USD'],['AAPL','Apple'],['NVDA','NVIDIA'],
   ['ASML.AS','ASML'],['NESN.SW','Nestlé'],['7203.T','Toyota'],['BTC-USD','Bitcoin']];
 async function buildTape(){
-  await loadQuotes(TAPE.map(([s,n]) => ({sym:s, name:n})), () => {});
+  await loadQuotes(TAPE.map(([s,n]) => ({sym:s, name:n, check:false})), () => {});
   const fx = cache.get('EURUSD=X');
   if(fx && !fx.error) fxEurUsd = fx.price;
   const html = TAPE.map(([s,n]) => {
