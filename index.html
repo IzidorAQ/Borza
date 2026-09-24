@@ -91,6 +91,12 @@ input[type=search]{min-width:150px}
 }
 .star:hover{color:var(--amber)}
 .star.on{color:var(--amber)}
+.card.fuel .fbody{display:flex;flex-direction:column;gap:5px}
+.card.fuel .fl{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px}
+.card.fuel .fl b{font-size:16px}
+.card.fuel .lbl{color:var(--dim);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.card.fuel .fpct{font-size:20px;font-weight:700}
+.card.fuel .fsub{color:var(--dim);font-size:10.5px;line-height:1.5}
 .empty-fav{padding:40px 20px;text-align:center;color:var(--dim);line-height:1.8}
 .empty-fav b{color:var(--text)}
 /* ime, država, kapitalizacija in dividenda v eni sami vrstici */
@@ -1083,6 +1089,31 @@ COMPANIES.forEach((c, i) => {
                  : (by('dom') || by('zda') || by('eu')));
 });
 
+/* --------------------------------------------------------------------
+   SLOVENSKA GORIVA
+   Regulirana cena (Uredba o oblikovanju cen določenih naftnih derivatov)
+   se računa iz 7-dnevnega povprečja kotacij Platts CIF Med (Genova/Lavera)
+   od ponedeljka do petka in tečaja EUR/USD. Nova cena velja od torka do
+   ponedeljka. Platts ni javno dostopen, zato kot približek uporabimo
+   najbližji terminski pogodbi na Yahooju:
+     dizel, kurilno olje  -> HO=F  (NY Harbor ULSD, USD/galono)
+     bencin 95            -> RB=F  (RBOB, USD/galono)
+   Sprememba tedenskega povprečja v EUR/liter, pomnožena z 1,22 (DDV),
+   je ocena spremembe cene na črpalki. Trošarina in marža sta na liter
+   fiksni in na spremembo ne vplivata, dokler ju vlada ne spremeni.
+   -------------------------------------------------------------------- */
+const FUEL_ANCHOR = {date: Date.UTC(2026, 8, 22),   // cene od torka 22. 9. 2026 (MzIE)
+  dizel: 2.012, bencin: 1.748, koel: 1.635};
+const FUELS = [
+  {kind:'dizel',  name:'Dizel · Slovenija',        proxy:'HO=F', proxyName:'NY Harbor ULSD'},
+  {kind:'bencin', name:'Bencin 95 · Slovenija',    proxy:'RB=F', proxyName:'RBOB bencin'},
+  {kind:'koel',   name:'Kurilno olje · Slovenija', proxy:'HO=F', proxyName:'NY Harbor ULSD'}
+].map((f,i) => ({
+  name: f.name, country: 'Gorivo', region: 'Surovina', key: 'Gorivo:' + f.kind, ord: -10 + i,
+  fuel: f.kind, proxyName: f.proxyName,
+  listings: [{slot:'dom', sym:f.proxy, reg:'Približek', city:'New York', venue:'Približek · ' + f.proxyName}]
+}));
+
 const GROUPS = {
   vse: COMPANIES,
   dvojne: COMPANIES.filter(c => c.listings.length > 1),
@@ -1090,7 +1121,7 @@ const GROUPS = {
   severna: COMPANIES.filter(c => c.region === 'severna'),
   azija: COMPANIES.filter(c => c.region === 'azija'),
   ostalo: COMPANIES.filter(c => c.region === 'ostalo'),
-  surovine: simple(SUROVINE,'Surovina'),
+  surovine: FUELS.concat(simple(SUROVINE,'Surovina')),
   slo: simple(SLO,'Slovenija'),
   indeksi: simple(INDEKSI,'Indeks')
 };
@@ -1742,6 +1773,107 @@ async function loadPerf(sym){
   }
 }
 
+/* ---------- NAPOVED CEN GORIV ---------- */
+const DAY_MS = 86400000;
+const GAL_L = 3.78541;
+const fuelHist = {};          // simbol -> [{d: 'YYYY-MM-DD', t, v}]
+let fuelLoadedAt = 0, fuelLoading = null;
+
+function dayKeyOf(tSec){
+  /* Dnevne svečke terminskih pogodb imajo lahko žig večer pred trgovalnim
+     dnem. Premik za 12 ur jih zanesljivo pripiše pravemu dnevu. */
+  return new Date(tSec*1000 + 12*3600*1000).toISOString().slice(0,10);
+}
+function mondayOf(ms){
+  const d = new Date(ms); const wd = (d.getUTCDay() + 6) % 7;   // 0 = ponedeljek
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - wd*DAY_MS;
+}
+async function loadFuel(){
+  if(Date.now() - fuelLoadedAt < 30*60*1000) return;
+  if(fuelLoading) return fuelLoading;
+  fuelLoading = (async () => {
+    for(const sym of ['HO=F','RB=F','EURUSD=X']){
+      try{
+        const res = await getChart(sym, '3mo', '1d');
+        const ts = res.timestamp || [], cl = res.indicators?.quote?.[0]?.close || [];
+        const byDay = new Map();
+        for(let i=0;i<ts.length;i++) if(cl[i] != null) byDay.set(dayKeyOf(ts[i]), cl[i]);
+        /* živi tečaj za danes, če ga dnevna svečka še nima */
+        const live = res.meta?.regularMarketPrice;
+        const today = new Date().toISOString().slice(0,10);
+        if(live && !byDay.has(today) && new Date().getUTCDay() % 6 !== 0) byDay.set(today, live);
+        fuelHist[sym] = [...byDay].map(([d,v]) => ({d, t: Date.parse(d + 'T00:00:00Z'), v}))
+          .sort((a,b) => a.t - b.t);
+      }catch(e){ /* ostane prazno, kartica to izpiše */ }
+    }
+    fuelLoadedAt = Date.now();
+    fuelLoading = null;
+  })();
+  return fuelLoading;
+}
+function fxOn(t){
+  const fx = fuelHist['EURUSD=X'] || [];
+  let v = null;
+  for(const p of fx){ if(p.t <= t) v = p.v; else break; }
+  return v || (fx[0] ? fx[0].v : null);
+}
+/* povprečje EUR/liter za delovne dni tedna, ki se začne v ponedeljek mon */
+function weekAvgEurL(sym, mon){
+  const pts = (fuelHist[sym] || []).filter(p => p.t >= mon && p.t < mon + 5*DAY_MS);
+  const vals = pts.map(p => { const fx = fxOn(p.t); return fx ? p.v / GAL_L / fx : null; })
+                  .filter(v => v != null);
+  if(!vals.length) return null;
+  return {avg: vals.reduce((a,b) => a+b, 0) / vals.length, n: vals.length};
+}
+/* Veriga tednov od znane cene naprej: vsak torek nova cena, določena s
+   povprečjem tedna, ki se je začel osem dni prej. */
+function fuelForecast(c){
+  const sym = c.listings[0].sym;
+  if(!fuelHist[sym] || !fuelHist['EURUSD=X']) return null;
+  const now = Date.now();
+  let price = FUEL_ANCHOR[c.fuel], from = FUEL_ANCHOR.date, estimated = false;
+  let next = null;
+  for(let k = 1; k < 30; k++){
+    const tue = FUEL_ANCHOR.date + 7*k*DAY_MS;
+    const wk = tue - 8*DAY_MS;
+    if(wk > now) break;
+    const a = weekAvgEurL(sym, wk), b = weekAvgEurL(sym, wk - 7*DAY_MS);
+    if(!a || !b) break;
+    const delta = (a.avg - b.avg) * 1.22;
+    const step = {tue, price: price + delta, delta, n: a.n, cur: a.avg, prev: b.avg};
+    if(tue <= now){ price = step.price; from = tue; estimated = true; }
+    else { next = step; break; }
+  }
+  return {price, from, estimated, next};
+}
+function fuelCardHTML(c){
+  const star = `<button class="star ${FAVORITES.has(c.key)?'on':''}" data-key="${c.key}"
+    aria-pressed="${FAVORITES.has(c.key)}" aria-label="Priljubljene">${FAVORITES.has(c.key) ? '★' : '☆'}</button>`;
+  const f = fuelForecast(c);
+  const dfmt = t => new Date(t).toLocaleDateString('sl-SI',{day:'numeric',month:'numeric'});
+  let body;
+  if(!f){
+    body = `<div class="miss">nalagam borzne kotacije</div>`;
+  }else{
+    const nowLine = `<div class="fl"><span class="lbl">velja od ${dfmt(f.from)}</span>
+      <b>${fmt(f.price,3)} €/L</b>${f.estimated ? ' <span class="lbl">ocena</span>' : ''}</div>`;
+    let nextLine = `<div class="fl"><span class="lbl">naslednja cena</span> ni še podatkov za tekoči teden</div>`;
+    if(f.next){
+      const up = f.next.delta >= 0;
+      const partial = f.next.n < 5 ? ` · ${f.next.n} od 5 dni` : '';
+      nextLine = `<div class="fl"><span class="lbl">napoved od ${dfmt(f.next.tue)}</span>
+        <b>${fmt(f.next.price,3)} €/L</b>
+        <span class="fpct ${up?'down':'up'}">${up?'+':''}${fmt(f.next.delta*100,1)} c</span></div>
+        <div class="fsub">borzni približek brez dajatev: ta teden ${fmt(f.next.cur,3)} €/L${partial},
+        prejšnji ${fmt(f.next.prev,3)} €/L · ${c.proxyName}</div>`;
+    }
+    body = nowLine + nextLine;
+  }
+  return `<div class="card fuel">${star}
+    <div class="ident"><div class="nm">${c.name}</div><div class="co">regulirana cena izven avtocest</div></div>
+    <div class="fbody">${body}</div></div>`;
+}
+
 /* Dividenda: vsota izplačil v zadnjih 12 mesecih in donos glede na živi tečaj.
    Znesek in tečaj sta v isti valuti iste kotacije, zato je razmerje pravilno
    tudi za londonske papirje, ki kotirajo v penijih. */
@@ -1831,7 +1963,12 @@ function groupList(){
   return GROUPS[group];
 }
 
+/* Kartice slovenskih goriv so vedno na vrhu, ne glede na razvrstitev. */
 function filtered(){
+  const out = sortedList();
+  return out.filter(c => c.fuel).concat(out.filter(c => !c.fuel));
+}
+function sortedList(){
   capRanked();
   const q = qEl.value.trim().toLowerCase();
   let arr = groupList();
@@ -1930,7 +2067,7 @@ function render(){
   if(page >= pages) page = pages-1;
   if(page < 0) page = 0;
   const slice = arr.slice(page*perPage, page*perPage+perPage);
-  cardsEl.innerHTML = slice.map((c,i) => `
+  cardsEl.innerHTML = slice.map((c,i) => c.fuel ? fuelCardHTML(c) : `
     <div class="card" data-i="${page*perPage+i}">
       <button class="star ${FAVORITES.has(c.key)?'on':''}" data-key="${c.key}"
         aria-pressed="${FAVORITES.has(c.key)}" aria-label="Priljubljene" title="Dodaj med priljubljene">
@@ -1964,7 +2101,9 @@ function render(){
 
   /* Zgodovina za donose: samo za matično kotacijo vsake vidne kartice
      in samo, če je še nimamo za danes. */
+  if(slice.some(c => c.fuel)) loadFuel().then(repaint);
   slice.forEach(async c => {
+    if(c.fuel) return;
     const sym = mainListing(c).sym;
     symCountry.set(sym, c.country);
     if(perfRefs.has(sym) || perfPending.has(sym) || perfMissing.has(sym)) return;
@@ -1983,6 +2122,7 @@ function repaint(){
     if(!slice.length) return;
     [...cardsEl.children].forEach((el,i) => {
       const c = slice[i]; if(!c) return;
+      if(c.fuel){ el.outerHTML = fuelCardHTML(c); return; }
       const q = el.querySelector('.quotes'); if(!q) return;
       q.innerHTML = c.listings.map(quoteHTML).join('');
       const pf = el.querySelector('.perf');
